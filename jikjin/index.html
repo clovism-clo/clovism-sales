@@ -8,6 +8,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Malgun Gothic",
 header{background:var(--head);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:5}
 header h1{margin:0;font-size:16px;font-weight:700}header p{margin:4px 0 0;font-size:12px;color:#cbd5e1}
 header a{color:#93c5fd;text-decoration:none}header .tag{display:inline-block;background:var(--ok);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;margin-left:6px;vertical-align:1px}
+header .brands{display:inline-flex;gap:4px;margin-left:8px;vertical-align:2px}header .brands a.tag{margin:0;background:#334155;color:#cbd5e1;cursor:pointer;padding:2px 10px;font-weight:600}header .brands a.tag:hover{background:#475569;color:#fff}header .brands a.tag.on{background:var(--ok);color:#fff;cursor:default}
 main{max-width:1280px;margin:0 auto;padding:12px 16px}
 .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(min-width:760px){.kpi{grid-template-columns:repeat(5,1fr)}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
@@ -67,14 +68,14 @@ tr.has td.c1{background:#f5f9ff}tr.has td{background:#fbfdff}
 .bp.open{border-color:var(--accline)}.bp .opts[hidden]{display:none}
 @media(max-width:600px){.foot .btn{padding:7px 9px;font-size:12px}main{padding:10px 16px}body{padding-bottom:130px}.wrap{max-height:none}body.best-tab{padding-bottom:20px}}
 </style></head><body>
-<div class="ov" id="login"><form class="box" id="loginForm"><h2>직진 재고·출고 대시보드</h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
+<div class="ov" id="login"><form class="box" id="loginForm"><h2>직진 재고·출고 대시보드 <span class="tag" id="loginBrand"></span></h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
 <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" autofocus>
 <label><input type="checkbox" id="remember" checked> 이 기기에서 기억하기</label>
 <div class="row"><button type="submit" class="btn pri" id="go">열기</button></div><div class="err" id="loginErr"></div></form></div>
 <div class="ov" id="tokenOv" hidden><form class="box" id="tokenForm"><h2>GitHub 연결 (입력분 저장)</h2><p>출고 입력을 모든 기기에서 같이 보려면 GitHub 토큰이 필요합니다. 토큰이 없으면 입력분은 이 기기(브라우저)에만 남고, 내려받기·복사는 그대로 됩니다.<br>토큰은 이 기기에만 저장되며 저장소(clovism-sales)의 파일 쓰기 권한만 있으면 됩니다.</p>
 <input type="password" id="tokenIn" placeholder="github_pat_… (비워 두면 연결 해제)" autocomplete="off">
 <div class="row" style="margin-top:12px"><button type="submit" class="btn pri">저장</button><button type="button" class="btn sub" id="tokenCancel">닫기</button></div><div class="err" id="tokenErr"></div></form></div>
-<header><h1>직진 재고·출고 대시보드 <span class="tag" id="brandTag">루엣</span></h1><p id="sub">자료를 여는 중…</p><div class="times" id="times" hidden></div></header>
+<header><h1>직진 재고·출고 대시보드 <span class="brands" id="brands"><a data-brand="rouet" class="tag">루엣</a><a data-brand="dali" class="tag">달리</a></span></h1><p id="sub">자료를 여는 중…</p><div class="times" id="times" hidden></div></header>
 <main id="app" hidden>
 <nav class="tabs" id="tabs"><button type="button" data-tab="ship" class="on">재고 · 출고</button><button type="button" data-tab="best">직진 베스트</button><button type="button" data-tab="report">매출보고</button></nav>
 <section id="tabShip">
@@ -135,7 +136,12 @@ tr.has td.c1{background:#f5f9ff}tr.has td{background:#fbfdff}
 <div class="toast" id="toast"></div>
 <script>
 (function(){
-const CFG={brand:'rouet',label:'루엣',repo:'clovism-clo/clovism-sales',entriesPath:'jikjin/rouet/entries.json',dataUrl:'rouet/data.enc',entriesUrl:'rouet/entries.json',lsEntries:'clv_jj_entries_rouet',lsToken:'clv_gh_token',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+// 브랜드: ?brand=rouet|dali 로 고르고, 없으면 이 기기에서 마지막에 본 브랜드(clv_jj_brand), 그것도 없으면 루엣. 자료·입력분은 브랜드별 폴더(rouet/, dali/)에 따로 있습니다.
+const BRANDS={rouet:{label:'루엣',short:'루엣'},dali:{label:'달리호텔',short:'달리'}};
+const BRAND=(function(){let b='';try{b=new URLSearchParams(location.search).get('brand')||'';}catch(e){}if(!BRANDS[b]){try{b=localStorage.getItem('clv_jj_brand')||'';}catch(e){}}if(!BRANDS[b])b='rouet';try{localStorage.setItem('clv_jj_brand',b);}catch(e){}return b;})();
+const CFG={brand:BRAND,label:BRANDS[BRAND].label,repo:'clovism-clo/clovism-sales',entriesPath:'jikjin/'+BRAND+'/entries.json',dataUrl:BRAND+'/data.enc',entriesUrl:BRAND+'/entries.json',lsEntries:'clv_jj_entries_'+BRAND,lsToken:'clv_gh_token',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+document.title='직진 재고·출고 대시보드 · '+CFG.label;document.getElementById('loginBrand').textContent=CFG.label;
+document.querySelectorAll('#brands a').forEach(a=>{a.classList.toggle('on',a.dataset.brand===BRAND);a.title=a.dataset.brand===BRAND?BRANDS[BRAND].label+' 자료를 보고 있습니다':BRANDS[a.dataset.brand].label+' 자료로 바꿉니다';});
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt=n=>n==null||isNaN(n)?'-':Math.round(n).toLocaleString('ko-KR');
@@ -181,7 +187,7 @@ function cur(){return (S.entries[S.date]&&S.entries[S.date].items)||{};}
 function qty(bc){return num(cur()[bc]);}
 function lastShip(bc){let best=null;for(const d in S.entries){if(d===S.date)continue;const q=S.entries[d].items&&S.entries[d].items[bc];if(q&&(!best||d>best.date))best={date:d,qty:q};}return best;}
 function setQty(bc,v){const q=Math.max(0,Math.floor(num(v)));if(!S.entries[S.date])S.entries[S.date]={savedAt:'',items:{}};const e=S.entries[S.date];if(q>0)e.items[bc]=q;else delete e.items[bc];e.savedAt=new Date().toISOString();if(!Object.keys(e.items).length)delete S.entries[S.date];S.dirty=true;saveLocal();}
-function header(){const d=S.data;$('#brandTag').textContent=d.brand||CFG.label;$('#sub').innerHTML=`자료 생성 ${esc(d.generated||'-')} · <a href="../index.html">매출보고 페이지</a>`;const t=$('#times');const L=[['직진 재고',d.stockTime],['직진 주문',d.orderTime],['입고현황',d.wmsTime],['셀메 재고',d.smTime],['마스터판',d.snapshotTime]].filter(x=>x[1]);t.innerHTML=L.map(x=>`${esc(x[0])} <b>${esc(x[1])}</b>`).join('');t.hidden=!L.length;}
+function header(){const d=S.data;$('#sub').innerHTML=`자료 생성 ${esc(d.generated||'-')} · <a href="../index.html">매출보고 페이지</a>`;const t=$('#times');const L=[['직진 재고',d.stockTime],['직진 주문',d.orderTime],['입고현황',d.wmsTime],['셀메 재고',d.smTime],['마스터판',d.snapshotTime]].filter(x=>x[1]);t.innerHTML=L.map(x=>`${esc(x[0])} <b>${esc(x[1])}</b>`).join('');t.hidden=!L.length;}
 function base(){return S.master?S.items.filter(x=>x.inMaster):S.items;}
 function kpis(){const it=base(),c=cur();const zero=it.filter(x=>!num(x.stock)),zs=zero.filter(x=>x.display==='판매중').length;const need=it.filter(x=>num(x.need)>0).length;const n=Object.keys(c).length,s=Object.values(c).reduce((a,b)=>a+num(b),0);$('#kCountLbl').textContent=S.master?'(마스터판)':'(직진 전체)';$('#kCount').textContent=fmt(it.length);$('#kSelling').textContent=fmt(it.filter(x=>x.display==='판매중').length);$('#kStock').textContent=fmt(it.reduce((a,x)=>a+num(x.stock),0));$('#kIncoming').textContent=fmt(it.reduce((a,x)=>a+num(x.incoming),0));$('#kChecking').textContent=fmt(it.reduce((a,x)=>a+num(x.checking),0));const tq=it.reduce((a,x)=>a+num(x.today),0),ta=it.reduce((a,x)=>a+num(x.todayAmt),0),q7=it.reduce((a,x)=>a+num(x.sale7),0),a7=it.reduce((a,x)=>a+num(x.sale7Amt),0);$('#kToday').textContent=`${fmt(tq)}개 · ${fmt(ta/10000)}만원`;$('#kSale7').textContent=`${fmt(q7)}개 · ${fmt(a7/10000)}만원`;$('#kZero').textContent=fmt(zero.length);$('#kZeroSell').textContent=fmt(zs);$('#kNeed').textContent=fmt(need);document.querySelectorAll('.card.clk').forEach(c=>{const keys=[c.dataset.f,...[...c.querySelectorAll('a[data-f]')].map(a=>a.dataset.f)];c.classList.toggle('on',S.filters.size>0&&keys.some(k=>k!=='all'&&k.split(',').every(f=>S.filters.has(f))));});$('#kDateLbl').textContent=S.date.slice(5).replace('-','/');$('#kShip').textContent=`${fmt(n)}건 · ${fmt(s)}개`;$('#kShipS').textContent=S.entries[S.date]&&S.entries[S.date].savedAt?'마지막 입력 '+new Date(S.entries[S.date].savedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'입력 없음';$('#fSum').textContent=`${fmt(n)}건 · ${fmt(s)}개`;}
 function status(){const st=$('#fSt');if(S.dirty){st.textContent=S.token?'저장 안 됨 · [저장] 을 누르면 GitHub 에 올라갑니다':'이 기기에만 저장됨 (GitHub 미연결 · ⋯ 에서 연결)';st.className='st dirty';}else{st.textContent=S.token?'GitHub 연결됨'+(S.lastSaved?' · '+S.lastSaved.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 저장':''):'GitHub 미연결 · 입력분은 이 기기에만 남습니다 (⋯ 에서 연결)';st.className='st';}}
@@ -237,6 +243,7 @@ $('#sort').addEventListener('change',e=>{S.sort=e.target.value;S.sortDir=1;table
 document.querySelector('#tbl thead').addEventListener('click',e=>{const th=e.target.closest('th');if(!th||!th.dataset.k)return;const k=th.dataset.k;if(S.sort===k)S.sortDir=-S.sortDir;else{S.sort=k;S.sortDir=1;}$('#sort').value=['default','stock','sale7','today','month','need','days','ship','name'].includes(k)?k:'default';table();});
 $('#master').addEventListener('change',e=>{S.master=e.target.checked;kpis();table();});
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab);});
+$('#brands').addEventListener('click',e=>{const a=e.target.closest('a[data-brand]');if(!a||a.dataset.brand===CFG.brand)return;if(S.dirty&&!confirm('아직 저장하지 않은 출고 입력이 있습니다. 그래도 '+BRANDS[a.dataset.brand].label+' 자료로 바꿀까요?'))return;S.dirty=false;location.href=location.pathname+'?brand='+a.dataset.brand;});
 $('#bestBy').addEventListener('change',e=>{S.bestBy=e.target.value;bestRender();});
 $('#bestQ').addEventListener('input',e=>{S.bestQ=e.target.value;bestRender();});
 $('#bestMaster').addEventListener('change',e=>{S.bestMaster=e.target.checked;bestRender();});
