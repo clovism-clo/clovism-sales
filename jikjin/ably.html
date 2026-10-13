@@ -215,10 +215,10 @@ const COLS=[
  {k:'d7',l:'최근 7일',s:'일별',c:'l',v:x=>x.s7},
  {k:'$s',l:'기간 판매',s:'판매 기준',v:(x,c)=>c.s},
  {k:'$avg',l:'일평균',v:(x,c)=>c.avg},
+ {k:'$qty',l:'입고 수량',s:'직접 입력',c:'q',v:x=>+(D.qty[x.oNo]||0)},
  {k:'$left',l:'남은 일수',s:'판매 가능 ÷ 일평균',v:(x,c)=>c.left==null?1e9:c.left},
  {k:'$rec',l:'권장 입고',s:'목표 일수 기준',v:(x,c)=>c.rec},
  {k:'$can',l:'보낼 수 있음',s:'셀메 창고 − 미발송',v:(x,c)=>c.can},
- {k:'$qty',l:'입고 수량',s:'직접 입력',c:'q',v:x=>+(D.qty[x.oNo]||0)},
  {k:'fin',l:'최종 판매가',s:'에이블리 앱',v:x=>x.fin},
  {k:'oNo',l:'옵션 번호',c:'l',v:x=>x.oNo}];
 function view(){
@@ -243,10 +243,11 @@ function renderStock(){
    +'<td class="l '+stCls+'">'+esc(x.st||'-')+'</td>'
    +'<td>'+fmt(x.avail)+'</td><td>'+(x.inc?fmt(x.inc):'<span class="zero">0</span>')+'</td>'
    +'<td class="l"><span class="d7" title="'+esc((D.doc.days||[]).map((d,i)=>d.slice(5)+' '+x.d7[i]).join(', '))+'">'+(x.d7||[]).join(' ')+'</span><small>합 '+fmt(x.s7)+'</small></td>'
-   +'<td>'+fmt(c.s)+'</td><td>'+fmt1(c.avg)+'</td><td class="'+leftCls+'">'+(c.left==null?'-':fmt1(c.left)+'일')+'</td>'
+   +'<td>'+fmt(c.s)+'</td><td>'+fmt1(c.avg)+'</td>'
+   +'<td class="q'+(q?' has':'')+'"><input type="number" min="0" step="1" inputmode="numeric" value="'+(q?esc(q):'')+'" aria-label="입고 수량"></td>'
+   +'<td class="'+leftCls+'">'+(c.left==null?'-':fmt1(c.left)+'일')+'</td>'
    +'<td>'+(c.rec?'<b>'+fmt(c.rec)+'</b>':'<span class="zero">0</span>')+'</td>'
    +'<td>'+(c.can==null?'-':c.can<c.rec?'<span class="warm">'+fmt(c.can)+'</span>':fmt(c.can))+'</td>'
-   +'<td class="q'+(q?' has':'')+'"><input type="number" min="0" step="1" inputmode="numeric" value="'+(q?esc(q):'')+'" aria-label="입고 수량"></td>'
    +'<td>'+fmt(x.fin)+'</td><td class="l mono">'+esc(x.oNo)+'</td></tr>';}).join('');
   $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다.';
   qtyNote();
