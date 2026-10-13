@@ -84,7 +84,7 @@ tr.has td.c1{background:#f5f9ff}tr.has td{background:#fbfdff}
 <div class="row" style="margin-top:12px"><button type="submit" class="btn pri">저장</button><button type="button" class="btn sub" id="tokenCancel">닫기</button></div><div class="err" id="tokenErr"></div></form></div>
 <header><h1>직진 재고·출고 대시보드 <span class="brands" id="brands"><a data-brand="rouet" class="tag">루엣</a><a data-brand="dali" class="tag">달리</a></span></h1><p id="sub">자료를 여는 중…</p><div class="times" id="times" hidden></div></header>
 <main id="app" hidden>
-<nav class="tabs" id="tabs"><button type="button" data-tab="ship" class="on">재고 · 출고</button><button type="button" data-tab="best">직진 베스트</button><button type="button" data-tab="sales">월별 매출</button><a class="lnk" id="tabLnkMaster" href="master.html" title="상품마스터는 따로 떼어 낸 페이지에서 엽니다 (루엣 · 달리)">상품마스터 ↗</a><button type="button" data-tab="report">매출보고</button></nav>
+<nav class="tabs" id="tabs"><button type="button" data-tab="ship" class="on">재고 · 출고</button><button type="button" data-tab="best">직진 베스트</button><button type="button" data-tab="sales">월별 매출</button><a class="lnk" id="tabLnkMaster" href="master.html" title="상품마스터는 따로 떼어 낸 페이지에서 엽니다 (루엣 · 달리)">상품마스터 ↗</a><a class="lnk" id="tabLnkAbly" href="ably.html" title="에이블리 도착보장 세팅 점검 · 재고 · 입고 (루엣 · 달리)">에이블리 도착보장 ↗</a><button type="button" data-tab="report">매출보고</button></nav>
 <section id="tabShip">
 <div class="kpi">
  <div class="card clk" data-f="all" data-s="default" title="누르면 전체 품목을 표에 보입니다"><div class="t">품목 <span id="kCountLbl">(마스터판)</span></div><div class="n" id="kCount">-</div><div class="s">판매중 <a data-f="selling" data-s="default" id="kSelling">-</a></div></div>
@@ -168,7 +168,7 @@ const BRANDS={rouet:{label:'루엣',short:'루엣'},dali:{label:'달리호텔',s
 const BRAND=(function(){let b='';try{b=new URLSearchParams(location.search).get('brand')||'';}catch(e){}if(!BRANDS[b]){try{b=localStorage.getItem('clv_jj_brand')||'';}catch(e){}}if(!BRANDS[b])b='rouet';try{localStorage.setItem('clv_jj_brand',b);}catch(e){}return b;})();
 const CFG={brand:BRAND,label:BRANDS[BRAND].label,repo:'clovism-clo/clovism-sales',entriesPath:'jikjin/'+BRAND+'/entries.json',dataUrl:BRAND+'/data.enc',entriesUrl:BRAND+'/entries.json',lsEntries:'clv_jj_entries_'+BRAND,lsToken:'clv_gh_token',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
 document.title='직진 재고·출고 대시보드 · '+CFG.label;document.getElementById('loginBrand').textContent=CFG.label;
-document.getElementById('tabLnkMaster').href='master.html?brand='+BRAND;
+document.getElementById('tabLnkMaster').href='master.html?brand='+BRAND;document.getElementById('tabLnkAbly').href='ably.html?brand='+BRAND;
 document.querySelectorAll('#brands a').forEach(a=>{a.classList.toggle('on',a.dataset.brand===BRAND);a.title=a.dataset.brand===BRAND?BRANDS[BRAND].label+' 자료를 보고 있습니다':BRANDS[a.dataset.brand].label+' 자료로 바꿉니다';});
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

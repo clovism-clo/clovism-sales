@@ -1,0 +1,313 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>에이블리 도착보장 대시보드</title>
+<meta name="description" content="브랜드별 에이블리 도착보장 옵션의 세팅 점검(스위치·바코드)과 재고·입고 판단을 보는 페이지">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#1c1f24;--mut:#6b7280;--line:#e5e7eb;--acc:#1e5eff;--accbg:#eff6ff;--accline:#bfdbfe;--r:#c00000;--ok:#16a34a;--warn:#b45309;--warnbg:#fffbeb;--head:#111827}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Malgun Gothic","맑은 고딕",-apple-system,system-ui,sans-serif;font-size:14px;padding-bottom:24px}
+header{background:var(--head);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:16px;font-weight:700}header p{margin:4px 0 0;font-size:12px;color:#cbd5e1}
+header a{color:#93c5fd;text-decoration:none}header .tag{display:inline-block;background:var(--ok);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;margin-left:6px;vertical-align:1px}
+header .brands{display:inline-flex;gap:4px;margin-left:8px;vertical-align:2px}header .brands a.tag{margin:0;background:#334155;color:#cbd5e1;cursor:pointer;padding:2px 10px;font-weight:600}header .brands a.tag:hover{background:#475569;color:#fff}header .brands a.tag.on{background:var(--ok);color:#fff;cursor:default}
+.times{font-size:11.5px;color:#cbd5e1;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px}.times b{color:#fff;font-weight:600}
+main{max-width:1280px;margin:0 auto;padding:12px 16px}
+.kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(min-width:760px){.kpi{grid-template-columns:repeat(4,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.card .t{font-size:11.5px;color:var(--mut)}.card .n{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}.card .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+.card.bad{border-color:#fecaca;background:#fef2f2}.card.bad .n{color:var(--r)}.card.good .n{color:var(--ok)}
+.tabs{display:flex;gap:6px;margin:14px 0 4px;border-bottom:1px solid var(--line)}
+.tabs button{font:inherit;font-size:14px;font-weight:600;padding:9px 14px;border:0;border-bottom:3px solid transparent;background:none;color:var(--mut);cursor:pointer;min-height:40px}
+.tabs button.on{color:var(--acc);border-bottom-color:var(--acc)}.tabs button .c{display:inline-block;margin-left:6px;background:#e5e7eb;color:#374151;border-radius:999px;padding:0 8px;font-size:12px}.tabs button .c.bad{background:var(--r);color:#fff}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 8px}
+.bar label{font-size:12.5px;color:var(--mut);display:flex;align-items:center;gap:4px}
+select,input[type=search],input[type=text],input[type=number],input[type=password]{font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:var(--ink);min-height:36px}
+input[type=search]{flex:1;min-width:160px}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border:1px solid var(--accline);border-radius:8px;background:var(--accbg);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;min-height:36px;white-space:nowrap}
+.btn.pri{background:var(--acc);color:#fff;border-color:var(--acc)}.btn.sub{background:#fff;color:#374151;border-color:#d1d5db}.btn.sm{min-height:28px;padding:3px 8px;font-size:12px}
+.btn:disabled{opacity:.55;cursor:not-allowed}.btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.chk{font-size:12.5px;color:#374151;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}.chk input{width:16px;height:16px}
+.wrap{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:calc(100vh - 120px);-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0;width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;text-align:right;font-variant-numeric:tabular-nums;vertical-align:middle;white-space:nowrap}
+thead th{position:sticky;top:0;background:#f9fafb;color:#374151;font-weight:600;z-index:2;cursor:pointer;user-select:none}
+thead th small{display:block;font-weight:400;color:var(--mut);font-size:10.5px}thead th.on{color:var(--acc)}
+td.l,th.l{text-align:left}td.nm{text-align:left;white-space:normal;min-width:240px;max-width:340px}td.nm small,td small{display:block;color:var(--mut);font-size:11.5px}
+td.c1,th.c1{text-align:left;position:sticky;left:0;background:#fff;z-index:1;box-shadow:1px 0 0 var(--line)}thead th.c1{z-index:3;background:#f9fafb}
+code,.mono{font-family:Consolas,"Malgun Gothic",monospace;font-size:12.5px}
+tbody tr:hover td{background:#f5f7ff}
+.badge{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.b-nobc{background:#fee2e2;color:#991b1b}.b-diff{background:#ffedd5;color:#9a3412}.b-nosm{background:#fef3c7;color:#92400e}.b-dup{background:#fae8ff;color:#86198f}.b-miss{background:#e0e7ff;color:#3730a3}
+.st-정상{color:var(--ok)}.st-품절,.st-미입고{color:var(--r);font-weight:600}
+.copy{font:inherit;font-size:12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer;margin-left:6px;color:#374151;min-height:26px}.copy:hover{background:#f3f4f6}
+.hot{color:var(--r);font-weight:700}.warm{color:var(--warn);font-weight:600}.zero{color:#9ca3af}
+td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;min-height:30px}td.q.has input{background:#fef3c7;border-color:#f59e0b}
+.d7{font-family:Consolas,monospace;font-size:12px;color:#374151;letter-spacing:.5px}
+.sec{margin:18px 0 6px;font-size:14px;font-weight:700}.sec small{font-weight:400;color:var(--mut);margin-left:6px;font-size:12px}
+.note{font-size:12px;color:var(--mut);margin:8px 0 0;line-height:1.6}
+.empty{padding:22px;text-align:center;color:var(--ok);font-weight:600;background:#fff;border:1px solid var(--line);border-radius:12px}
+.ov{position:fixed;inset:0;background:rgba(17,24,39,.96);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.box{background:#1f2937;border:1px solid #374151;border-radius:14px;padding:24px 22px;width:min(100%,380px);color:#e5e7eb}
+.box h2{font-size:16px;margin:0 0 4px}.box p{margin:0 0 12px;font-size:12.5px;color:#9ca3af;line-height:1.5}
+.box input[type=password]{width:100%;font-size:16px;padding:10px 12px;border:1px solid #4b5563;background:#111827;color:#fff}
+.box label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#9ca3af;margin:10px 0 12px}
+.box .row{display:flex;gap:8px}.box .btn{flex:1;justify-content:center;padding:11px}.box .err{color:#fca5a5;font-size:12.5px;margin-top:8px;min-height:1.2em}
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}.toast.on{opacity:1}
+.inbar{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 10px}
+@media(max-width:600px){.wrap{max-height:none}}
+</style></head><body>
+<div class="ov" id="login"><form class="box" id="loginForm"><h2>에이블리 도착보장 대시보드 <span class="tag" id="loginBrand"></span></h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
+<input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" autofocus>
+<label><input type="checkbox" id="remember" checked> 이 기기에서 기억하기</label>
+<div class="row"><button type="submit" class="btn pri" id="go">열기</button></div><div class="err" id="loginErr"></div></form></div>
+<header><h1>에이블리 도착보장 대시보드 <span class="brands" id="brands"><a data-brand="rouet" class="tag">루엣</a><a data-brand="dali" class="tag">달리</a></span></h1><p id="sub">자료를 여는 중…</p><div class="times" id="times" hidden></div></header>
+<main id="app" hidden>
+<div class="kpi">
+ <div class="card"><div class="t">도착보장 옵션</div><div class="n" id="kOpt">-</div><div class="s" id="kOptS"></div></div>
+ <div class="card"><div class="t">판매 가능 재고 · 입고 예정</div><div class="n" id="kStock">-</div><div class="s" id="kStockS"></div></div>
+ <div class="card"><div class="t">최근 7일 판매</div><div class="n" id="kSale">-</div><div class="s" id="kSaleS"></div></div>
+ <div class="card" id="kIssueC"><div class="t">세팅 확인 필요</div><div class="n" id="kIssue">-</div><div class="s" id="kIssueS"></div></div>
+</div>
+<div class="tabs" role="tablist"><button type="button" data-tab="set" role="tab">세팅 점검<span class="c" id="tcSet">0</span></button><button type="button" data-tab="stock" role="tab">재고 · 입고<span class="c" id="tcStock">0</span></button></div>
+
+<section id="tabSet">
+ <p class="note">도착보장은 상품 수정 화면에서 옵션마다 <b>도착보장 스위치를 켜고 바코드를 직접 넣어야</b> 재고 목록에 올라옵니다. 아래는 그 세팅에서 손볼 곳입니다. '넣을 바코드'는 에이블리 상품 목록의 <b>솔루션사 고유코드(셀메 연동 코드)</b>이고, 그것이 없으면 품번과 옵션으로 셀메이트에서 찾은 바코드입니다. 수정 화면에서 고친 뒤 <b>에이블리마스터_업데이트.cmd</b> 를 실행하면 바로 다시 점검합니다(평소에는 매시간 자동 갱신).</p>
+ <div class="sec">바코드 확인 필요 <small id="issueCnt"></small></div>
+ <div id="issueBox"></div>
+ <div class="sec">스위치를 켜지 않은 옵션 <small>도착보장 옵션이 있는 상품의 나머지 옵션</small></div>
+ <div class="bar"><label class="chk"><input type="checkbox" id="missOpen" checked> 진열 중 · 품절 아닌 옵션만</label><label class="chk"><input type="checkbox" id="missStock"> 셀메 창고 재고 있는 것만</label><span class="note" id="missCnt"></span></div>
+ <div id="missBox"></div>
+</section>
+
+<section id="tabStock" hidden>
+ <div class="bar">
+  <input type="search" id="q" placeholder="품번 · 상품명 · 옵션 · 바코드 · 상품번호 검색" autocomplete="off">
+  <label>재고 상태 <select id="fSt"><option value="">전체</option><option value="정상">정상</option><option value="품절">품절</option><option value="미입고 품절">미입고 품절</option></select></label>
+  <label>판매 기준 <select id="fBase"><option value="7">최근 7일 평균</option><option value="14">최근 14일 평균</option><option value="30">최근 30일 평균</option></select></label>
+  <label>목표 <select id="fDays"><option value="6">6일분 (기본)</option><option value="10">10일분 (설 연휴)</option><option value="14">14일분</option></select></label>
+  <label class="chk"><input type="checkbox" id="fNeed"> 입고 필요만</label>
+  <label class="chk"><input type="checkbox" id="fSale"> 7일 판매 있는 것만</label>
+ </div>
+ <div class="bar inbar">
+  <label>패키지명 <input type="text" id="pkg" style="width:110px" autocomplete="off"></label>
+  <label>검품 방식 <select id="insp"><option>스탠다드</option><option>프로</option></select></label>
+  <button type="button" class="btn sub" id="fillRec" title="입고 수량 칸을 권장 수량(셀메 창고에서 보낼 수 있는 만큼)으로 채웁니다">권장 수량으로 채우기</button>
+  <button type="button" class="btn sub" id="clearQty">입고 수량 비우기</button>
+  <button type="button" class="btn pri" id="dlIn">입고신청 엑셀</button>
+  <button type="button" class="btn" id="dlSm">셀메이트 주문등록 엑셀</button>
+  <button type="button" class="btn sub" id="dlCsv">표 CSV</button>
+  <span class="note" id="qtyNote"></span>
+ </div>
+ <div class="wrap"><table id="stbl"><thead id="sth"></thead><tbody id="stb"></tbody></table></div>
+ <p class="note" id="stNote"></p>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+// 에이블리 도착보장 대시보드 (2026-10-13). 루엣·달리 공용, ?brand= 로 전환. 자료는 <brand>/ably.enc (ably_compute.js 결과를 build_dashboard.js 가 암호화)
+const BRANDS={rouet:{label:'루엣'},dali:{label:'달리호텔'}};
+const BRAND=(function(){let b='';try{b=new URLSearchParams(location.search).get('brand')||'';}catch(e){}if(!BRANDS[b]){try{b=localStorage.getItem('clv_jj_brand')||'';}catch(e){}}if(!BRANDS[b])b='dali';try{localStorage.setItem('clv_jj_brand',b);}catch(e){}return b;})();
+const CFG={brand:BRAND,label:BRANDS[BRAND].label,dataUrl:BRAND+'/ably.enc',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+document.title='에이블리 도착보장 · '+CFG.label;
+const $=s=>document.querySelector(s);
+$('#loginBrand').textContent=CFG.label;
+document.querySelectorAll('#brands a').forEach(a=>{a.classList.toggle('on',a.dataset.brand===BRAND);});
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt=n=>n==null||isNaN(n)?'-':Math.round(n).toLocaleString('ko-KR');
+const fmt1=n=>n==null||isNaN(n)?'-':(Math.round(n*10)/10).toLocaleString('ko-KR');
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){return null;}}
+let toastT;function toast(m,ms){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||2200);}
+function todayKst(){return new Date(Date.now()+9*3600e3).toISOString().slice(0,10);}
+
+// 암호화: 매출보고·직진 대시보드와 같은 방식 (PBKDF2-SHA256 300,000회 + AES-256-GCM, salt16 + iv12 + 암호문)
+async function key(pw,salt){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:300000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);}
+async function decBytes(buf,pw){const u=new Uint8Array(buf);const k=await key(pw,u.slice(0,16));return crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(16,28)},k,u.slice(28));}
+
+const D={doc:null,items:[],tab:'set',sort:'',dir:1,q:'',st:'',base:'7',days:'6',need:false,sale:false,qty:{}};
+const LSQ='clv_ably_qty_'+BRAND, LSO='clv_ably_opt_'+BRAND;
+
+async function open(pw){
+  const r=await fetch(CFG.dataUrl+'?t='+Date.now(),{cache:'no-store'});
+  if(r.status===404)throw new Error('아직 '+CFG.label+' 도착보장 자료가 게시되지 않았습니다.');
+  if(!r.ok)throw new Error('자료를 받지 못했습니다 ('+r.status+')');
+  let plain;
+  try{plain=await decBytes(await r.arrayBuffer(),pw);}catch(e){throw new Error('비밀번호가 맞지 않습니다.');}
+  D.doc=JSON.parse(new TextDecoder().decode(plain));D.items=D.doc.items||[];
+}
+async function start(pw,remember){
+  const btn=$('#go');btn.disabled=true;btn.textContent='여는 중…';$('#loginErr').textContent='';
+  try{
+    await open(pw);
+    try{sessionStorage.setItem('clv_pw_s',pw);}catch(e){}
+    ls('clv_pw',remember?pw:null);
+    $('#login').hidden=true;$('#app').hidden=false;
+    try{const o=JSON.parse(ls(LSO)||'{}');['base','days','tab'].forEach(k=>{if(o[k])D[k]=o[k];});}catch(e){}
+    try{D.qty=JSON.parse(ls(LSQ)||'{}')||{};}catch(e){D.qty={};}
+    $('#fBase').value=D.base;$('#fDays').value=D.days;
+    $('#pkg').value=ls('clv_ably_pkg_'+BRAND)||((todayKst().slice(5).replace('-',''))+'(1)');
+    header();kpi();renderSet();renderStock();setTab(D.tab);
+  }catch(e){$('#loginErr').textContent=e.message||String(e);if(/비밀번호/.test(e.message||''))ls('clv_pw',null);}
+  finally{btn.disabled=false;btn.textContent='열기';}
+}
+function header(){
+  const d=D.doc,F=d.files||{};
+  $('#sub').innerHTML='자료 생성 '+esc(d.generated||'-')+' · <a href="index.html?brand='+esc(BRAND)+'">직진 재고·출고 대시보드</a> · <a href="master.html?brand='+esc(BRAND)+'">상품마스터</a> · <a href="../index.html">매출보고 페이지</a>';
+  const L=[['도착보장 재고',F.ably_stock],['에이블리 상품 목록',F.ably_goods],['셀메 재고',F.sellmate_stock]].filter(x=>x[1]&&x[1].time);
+  const t=$('#times');t.innerHTML=L.map(x=>esc(x[0])+' <b>'+esc(x[1].time)+'</b>').join('');t.hidden=!L.length;
+}
+const ISSUE={nobc:['바코드 미입력','b-nobc'],diff:['셀메 바코드와 다름','b-diff'],nosm:['셀메에 없는 바코드','b-nosm'],dup:['바코드 중복','b-dup']};
+function issueTotal(){const i=D.doc.issues||{};return (i.nobc||0)+(i.diff||0)+(i.nosm||0)+(i.dup||0);}
+function kpi(){
+  const it=D.items,goods=new Set(it.map(x=>x.gNo));
+  $('#kOpt').textContent=fmt(it.length)+'개';$('#kOptS').textContent='상품 '+fmt(goods.size)+'개 · 품절 '+fmt(it.filter(x=>/품절/.test(x.st||'')).length)+'옵션';
+  const av=it.reduce((a,x)=>a+(x.avail||0),0),inc=it.reduce((a,x)=>a+(x.inc||0),0);
+  $('#kStock').textContent=fmt(av)+' · '+fmt(inc);$('#kStockS').textContent='안전 재고 '+fmt(it.reduce((a,x)=>a+(x.safety||0),0))+' · 불량 '+fmt(it.reduce((a,x)=>a+(x.defect||0),0));
+  const s7=it.reduce((a,x)=>a+(x.s7||0),0);const days=D.doc.days||[];
+  $('#kSale').textContent=fmt(s7)+'개';$('#kSaleS').textContent=days.length?days[0].slice(5)+' ~ '+days[days.length-1].slice(5)+' · 판매 옵션 '+fmt(it.filter(x=>x.s7>0).length)+'개':'';
+  const n=issueTotal(),m=D.doc.missingOpen||0;
+  $('#kIssue').textContent=n?fmt(n)+'건':'없음';$('#kIssueC').className='card '+(n?'bad':'good');
+  $('#kIssueS').textContent='켜지 않은 진열 옵션 '+fmt(m)+'개';
+  const tc=$('#tcSet');tc.textContent=n;tc.classList.toggle('bad',n>0);
+}
+function setTab(t){D.tab=t;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));$('#tabSet').hidden=t!=='set';$('#tabStock').hidden=t!=='stock';saveOpt();}
+function saveOpt(){ls(LSO,JSON.stringify({base:D.base,days:D.days,tab:D.tab}));}
+function copyBtn(v){return v?'<button type="button" class="copy" data-copy="'+esc(v)+'" title="복사">복사</button>':'';}
+
+// ---- 세팅 점검 ----
+function issueText(x){
+  if(x.issue==='nobc')return x.sug?'수정 화면에서 이 옵션의 바코드 칸에 넣을 값입니다.':'넣을 셀메 바코드를 찾지 못했습니다. 셀메이트에서 품번·옵션을 확인해 주세요.';
+  if(x.issue==='diff'){let s='입력한 바코드가 이 옵션의 셀메 바코드와 다릅니다.';if(x.owner)s+=' 입력한 값은 <b>'+esc(x.owner.code)+' '+esc(x.owner.opt||'')+'</b> 옵션의 셀메 바코드입니다'+(x.owner.on?' (그 옵션도 도착보장 사용 중)':'')+'.';return s;}
+  if(x.issue==='nosm')return '입력한 바코드가 셀메이트 재고목록에 없습니다. 오타이거나 셀메이트에 아직 등록되지 않은 바코드입니다.';
+  if(x.issue==='dup')return '같은 바코드가 다른 도착보장 옵션에도 들어가 있습니다.'+(x.owner?' 셀메 기준 주인은 <b>'+esc(x.owner.code)+' '+esc(x.owner.opt||'')+'</b> 입니다.':'');
+  return '';
+}
+function renderSet(){
+  const L=D.items.filter(x=>x.issue).sort((a,b)=>Object.keys(ISSUE).indexOf(a.issue)-Object.keys(ISSUE).indexOf(b.issue)||String(a.code).localeCompare(String(b.code)));
+  $('#issueCnt').textContent=L.length?L.length+'건':'';
+  if(!L.length)$('#issueBox').innerHTML='<div class="empty">도착보장 옵션의 바코드가 모두 셀메 바코드와 맞습니다.</div>';
+  else $('#issueBox').innerHTML='<div class="wrap"><table><thead><tr><th class="l">구분</th><th class="l">품번 · 상품번호</th><th class="l">상품명 · 옵션</th><th class="l">입력한 바코드</th><th class="l">넣을 바코드 <small>셀메</small></th><th>셀메 창고<small>SJ_기본창고</small></th><th class="l">설명</th></tr></thead><tbody>'+L.map(x=>{const I=ISSUE[x.issue];return '<tr><td class="l"><span class="badge '+I[1]+'">'+I[0]+'</span></td><td class="l"><b class="mono">'+esc(x.code||'-')+'</b><small>상품 '+esc(x.gNo)+copyBtn(x.gNo)+'</small></td><td class="nm">'+esc(x.name)+'<small>'+esc(x.opt)+' · 옵션 '+esc(x.oNo)+'</small></td><td class="l mono">'+(x.bc?esc(x.bc):'<span class="zero">(비어 있음)</span>')+'</td><td class="l mono">'+(x.sug?'<b>'+esc(x.sug)+'</b>'+copyBtn(x.sug):'-')+'</td><td>'+fmt(x.smWh)+'</td><td class="nm">'+issueText(x)+'</td></tr>';}).join('')+'</tbody></table></div>';
+  renderMiss();
+}
+function renderMiss(){
+  const onlyOpen=$('#missOpen').checked,onlyStock=$('#missStock').checked;
+  const M=(D.doc.missing||[]).filter(m=>(!onlyOpen||(m.disp==='진열'&&m.soldout!=='품절'))&&(!onlyStock||(m.smWh||0)-(m.smUnsent||0)>0)).sort((a,b)=>String(a.code).localeCompare(String(b.code))||String(a.opt).localeCompare(String(b.opt)));
+  $('#missCnt').textContent=fmt(M.length)+'개 / 전체 '+fmt((D.doc.missing||[]).length)+'개';
+  if(!M.length){$('#missBox').innerHTML='<div class="empty">조건에 맞는 옵션이 없습니다.</div>';return;}
+  $('#missBox').innerHTML='<div class="wrap"><table><thead><tr><th class="l">품번 · 상품번호</th><th class="l">상품명 · 옵션</th><th class="l">진열 · 품절</th><th class="l">넣을 바코드 <small>셀메</small></th><th>셀메 창고<small>SJ_기본창고</small></th><th>미발송</th></tr></thead><tbody>'+M.map(m=>'<tr><td class="l"><b class="mono">'+esc(m.code||'-')+'</b><small>상품 '+esc(m.gNo)+copyBtn(m.gNo)+'</small></td><td class="nm">'+esc(m.name)+'<small>'+esc(m.opt)+' · 옵션 '+esc(m.oNo)+'</small></td><td class="l">'+esc(m.disp||'-')+' · '+esc(m.soldout||'-')+'</td><td class="l mono">'+(m.sug?esc(m.sug)+copyBtn(m.sug):'-')+'</td><td>'+fmt(m.smWh)+'</td><td>'+fmt(m.smUnsent)+'</td></tr>').join('')+'</tbody></table></div>';
+}
+
+// ---- 재고 · 입고 ----
+// 일평균 = 기준 기간 판매 ÷ 일수, 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정, 보낼 수 있음 = 셀메 SJ_기본창고 − 미발송
+function calc(x){
+  const n=+D.base,s=n===7?x.s7:n===14?x.s14:x.s30;const avg=(s||0)/n;
+  const left=avg>0?(x.avail||0)/avg:null;
+  const rec=Math.max(0,Math.ceil(avg*(+D.days))-(x.avail||0)-(x.inc||0));
+  const can=x.smWh==null?null:Math.max(0,(x.smWh||0)-(x.smUnsent||0));
+  return {s,avg,left,rec,can,send:can==null?rec:Math.min(rec,can)};
+}
+const COLS=[
+ {k:'code',l:'품번',c:'c1 l',v:x=>x.code},
+ {k:'name',l:'상품명 · 옵션',c:'l',v:x=>x.name},
+ {k:'bc',l:'바코드',c:'l',v:x=>x.bc},
+ {k:'st',l:'재고 상태',c:'l',v:x=>x.st},
+ {k:'avail',l:'판매 가능',v:x=>x.avail},
+ {k:'inc',l:'입고 예정',v:x=>x.inc},
+ {k:'d7',l:'최근 7일',s:'일별',c:'l',v:x=>x.s7},
+ {k:'$s',l:'기간 판매',s:'판매 기준',v:(x,c)=>c.s},
+ {k:'$avg',l:'일평균',v:(x,c)=>c.avg},
+ {k:'$left',l:'남은 일수',s:'판매 가능 ÷ 일평균',v:(x,c)=>c.left==null?1e9:c.left},
+ {k:'$rec',l:'권장 입고',s:'목표 일수 기준',v:(x,c)=>c.rec},
+ {k:'$can',l:'보낼 수 있음',s:'셀메 창고 − 미발송',v:(x,c)=>c.can},
+ {k:'$qty',l:'입고 수량',s:'직접 입력',c:'q',v:x=>+(D.qty[x.oNo]||0)},
+ {k:'fin',l:'최종 판매가',s:'에이블리 앱',v:x=>x.fin},
+ {k:'oNo',l:'옵션 번호',c:'l',v:x=>x.oNo}];
+function view(){
+  const q=D.q.trim().toLowerCase();
+  let V=D.items.map(x=>({x,c:calc(x)}));
+  if(q)V=V.filter(({x})=>[x.code,x.name,x.opt,x.bc,x.gNo,x.oNo,x.sku,x.sug].some(v=>v&&String(v).toLowerCase().includes(q)));
+  if(D.st)V=V.filter(({x})=>x.st===D.st);
+  if(D.need)V=V.filter(({c})=>c.rec>0);
+  if(D.sale)V=V.filter(({x})=>x.s7>0);
+  if(D.sort){const col=COLS.find(c=>c.k===D.sort);V.sort((a,b)=>{const va=col.v(a.x,a.c),vb=col.v(b.x,b.c);if(typeof va==='number'||typeof vb==='number')return ((va==null?-1e12:va)-(vb==null?-1e12:vb))*D.dir;return String(va==null?'':va).localeCompare(String(vb==null?'':vb),'ko')*D.dir;});}
+  else V.sort((a,b)=>(a.c.left==null?1e9:a.c.left)-(b.c.left==null?1e9:b.c.left)||(b.x.s7-a.x.s7));
+  return V;
+}
+function renderStock(){
+  $('#sth').innerHTML='<tr>'+COLS.map(c=>'<th class="'+(c.c||'')+(D.sort===c.k?' on':'')+'" data-k="'+c.k+'">'+esc(c.l)+(D.sort===c.k?(D.dir>0?' ▲':' ▼'):'')+(c.s?'<small>'+esc(c.s)+'</small>':'')+'</th>').join('')+'</tr>';
+  const V=view();
+  $('#tcStock').textContent=D.items.filter(x=>calc(x).rec>0).length;
+  $('#stb').innerHTML=V.map(({x,c})=>{const q=D.qty[x.oNo];const leftCls=c.left==null?'zero':c.left<=3?'hot':c.left<=6?'warm':'';const stCls='st-'+String(x.st||'').split(' ')[0];
+   return '<tr data-o="'+esc(x.oNo)+'"><td class="c1 l"><b class="mono">'+esc(x.code||'-')+'</b>'+(x.issue?'<small><span class="badge '+ISSUE[x.issue][1]+'">'+ISSUE[x.issue][0]+'</span></small>':'')+'</td>'
+   +'<td class="nm">'+esc(x.name)+'<small>'+esc(x.opt)+(x.gOpen==='미진열'?' · 상품 미진열':'')+'</small></td>'
+   +'<td class="l mono">'+(x.bc?esc(x.bc):'<span class="zero">-</span>')+'</td>'
+   +'<td class="l '+stCls+'">'+esc(x.st||'-')+'</td>'
+   +'<td>'+fmt(x.avail)+'</td><td>'+(x.inc?fmt(x.inc):'<span class="zero">0</span>')+'</td>'
+   +'<td class="l"><span class="d7" title="'+esc((D.doc.days||[]).map((d,i)=>d.slice(5)+' '+x.d7[i]).join(', '))+'">'+(x.d7||[]).join(' ')+'</span><small>합 '+fmt(x.s7)+'</small></td>'
+   +'<td>'+fmt(c.s)+'</td><td>'+fmt1(c.avg)+'</td><td class="'+leftCls+'">'+(c.left==null?'-':fmt1(c.left)+'일')+'</td>'
+   +'<td>'+(c.rec?'<b>'+fmt(c.rec)+'</b>':'<span class="zero">0</span>')+'</td>'
+   +'<td>'+(c.can==null?'-':c.can<c.rec?'<span class="warm">'+fmt(c.can)+'</span>':fmt(c.can))+'</td>'
+   +'<td class="q'+(q?' has':'')+'"><input type="number" min="0" step="1" inputmode="numeric" value="'+(q?esc(q):'')+'" aria-label="입고 수량"></td>'
+   +'<td>'+fmt(x.fin)+'</td><td class="l mono">'+esc(x.oNo)+'</td></tr>';}).join('');
+  $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다.';
+  qtyNote();
+}
+function qtyNote(){const L=D.items.filter(x=>+D.qty[x.oNo]>0);$('#qtyNote').textContent=L.length?'입고 수량 '+fmt(L.length)+'옵션 · '+fmt(L.reduce((a,x)=>a+(+D.qty[x.oNo]),0))+'개 (이 기기에 저장됨)':'입고 수량을 적은 옵션이 엑셀에 들어갑니다';}
+function saveQty(){ls(LSQ,JSON.stringify(D.qty));qtyNote();}
+
+function loadXLSX(){return window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src=CFG.xlsx;s.onload=res;s.onerror=()=>rej(new Error('엑셀 라이브러리를 불러오지 못했습니다 (인터넷 연결 확인)'));document.head.appendChild(s);});}
+function qtyRows(){return D.items.filter(x=>+D.qty[x.oNo]>0);}
+// 입고신청: 에이블리 입고 신청 양식의 열 순서 (패키지명 · SKU번호 · 상품바코드번호 · 상품명 · 옵션정보 · 입고예정수량 · 입고 검품 방식). '프로' 검품은 바코드를 비움
+async function dlIn(){
+  const L=qtyRows();if(!L.length)return toast('입고 수량을 적은 옵션이 없습니다');
+  const noBc=L.filter(x=>!x.bc&&$('#insp').value!=='프로');
+  if(noBc.length&&!confirm('바코드가 비어 있는 옵션이 '+noBc.length+'개 있습니다 ('+noBc.slice(0,3).map(x=>x.code+' '+x.opt).join(', ')+'…). 스탠다드 검품은 바코드가 필요합니다. 그래도 내려받을까요?'))return;
+  try{await loadXLSX();}catch(e){return toast(e.message,4000);}
+  const pkg=$('#pkg').value.trim()||'1';ls('clv_ably_pkg_'+BRAND,pkg);const insp=$('#insp').value;
+  const H=['패키지명','SKU번호','상품바코드번호','상품명','옵션정보','입고예정수량','입고 검품 방식'];
+  const R=L.map(x=>[pkg,/^\d+$/.test(x.sku||'')?+x.sku:x.sku,insp==='프로'?'':(x.bc||''),x.name,String(x.opt||'').replace(/ \/ /g,', '),+D.qty[x.oNo],insp]);
+  const ws=XLSX.utils.aoa_to_sheet([H,...R]);ws['!cols']=[{wch:12},{wch:14},{wch:20},{wch:50},{wch:22},{wch:12},{wch:14}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'입고신청');XLSX.writeFile(wb,CFG.label+'_도착보장_입고신청_'+todayKst().replace(/-/g,'')+'.xlsx');
+  toast('입고신청 '+R.length+'옵션 · '+fmt(R.reduce((a,r)=>a+r[5],0))+'개 내려받음 · 에이블리 입고 신청 양식에 붙여 넣어 올려 주세요',4500);
+}
+// 셀메이트 주문등록: 1-1 양식 열 (주문번호 · 바코드 · 상품명 · 옵션 · 수량 · 수령자 · 우편번호 · 주소). 바코드는 셀메 바코드(입력값이 셀메에 있으면 그것, 아니면 넣을 바코드)
+async function dlSm(){
+  const L=qtyRows();if(!L.length)return toast('입고 수량을 적은 옵션이 없습니다');
+  try{await loadXLSX();}catch(e){return toast(e.message,4000);}
+  const no=todayKst().replace(/-/g,'');
+  // 주문번호는 엑셀 양식처럼 오늘 날짜(=TODAY()) 값
+  const t=todayKst().split('-').map(Number),day=new Date(t[0],t[1]-1,t[2]);
+  const H=['주문번호','바코드','상품명','옵션','수량','수령자','우편번호','주소'];
+  const R=L.map(x=>[day,x.smBc||x.bc||x.sug||'',x.name,x.smOpt||String(x.opt||'').replace(/ \/ /g,','),+D.qty[x.oNo],'','','']);
+  const miss=R.filter(r=>!r[1]).length;
+  const ws=XLSX.utils.aoa_to_sheet([H,...R],{cellDates:true,dateNF:'yyyy-mm-dd'});ws['!cols']=[{wch:10},{wch:20},{wch:50},{wch:18},{wch:8},{wch:10},{wch:10},{wch:30}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'셀메이트 주문등록');XLSX.writeFile(wb,CFG.label+'_도착보장_셀메주문등록_'+no+'.xlsx');
+  toast('셀메이트 주문등록 '+R.length+'옵션 내려받음'+(miss?' · 바코드 없는 행 '+miss+'개 확인 필요':''),miss?5000:3000);
+}
+function dlCsv(){
+  const V=view();const H=['품번','상품명','옵션','바코드','재고 상태','판매 가능','입고 예정','최근 7일','기간 판매','일평균','남은 일수','권장 입고','보낼 수 있음','입고 수량','최종 판매가','상품 번호','옵션 번호','SKU 번호','세팅 점검'];
+  const T=[H,...V.map(({x,c})=>[x.code,x.name,x.opt,x.bc,x.st,x.avail,x.inc,x.s7,c.s,Math.round(c.avg*100)/100,c.left==null?'':Math.round(c.left*10)/10,c.rec,c.can==null?'':c.can,D.qty[x.oNo]||'',x.fin,x.gNo,x.oNo,x.sku,x.issue?ISSUE[x.issue][0]:''])];
+  const csv='﻿'+T.map(r=>r.map(v=>{const s=String(v==null?'':v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=CFG.label+'_도착보장_'+todayKst().replace(/-/g,'')+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+}
+
+// ---- 이벤트 ----
+$('#loginForm').addEventListener('submit',e=>{e.preventDefault();start($('#pw').value,$('#remember').checked);});
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+$('#brands').addEventListener('click',e=>{const a=e.target.closest('a[data-brand]');if(!a||a.dataset.brand===BRAND)return;location.href=location.pathname+'?brand='+a.dataset.brand;});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;const v=b.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast(v+' 복사함')).catch(()=>{prompt('복사해 주세요',v);});});
+$('#missOpen').addEventListener('change',renderMiss);$('#missStock').addEventListener('change',renderMiss);
+let qT;$('#q').addEventListener('input',e=>{D.q=e.target.value;clearTimeout(qT);qT=setTimeout(renderStock,180);});
+$('#fSt').addEventListener('change',e=>{D.st=e.target.value;renderStock();});
+$('#fBase').addEventListener('change',e=>{D.base=e.target.value;saveOpt();renderStock();});
+$('#fDays').addEventListener('change',e=>{D.days=e.target.value;saveOpt();renderStock();});
+$('#fNeed').addEventListener('change',e=>{D.need=e.target.checked;renderStock();});
+$('#fSale').addEventListener('change',e=>{D.sale=e.target.checked;renderStock();});
+$('#sth').addEventListener('click',e=>{const th=e.target.closest('th');if(!th||!th.dataset.k)return;const k=th.dataset.k;if(D.sort===k)D.dir=-D.dir;else{D.sort=k;D.dir=k[0]==='$'||['avail','inc','d7','fin'].includes(k)?-1:1;}renderStock();});
+$('#stb').addEventListener('change',e=>{const inp=e.target;if(!inp.closest('td.q'))return;const o=inp.closest('tr').dataset.o;const v=Math.max(0,Math.round(+inp.value||0));if(v)D.qty[o]=v;else delete D.qty[o];inp.value=v||'';inp.closest('td').classList.toggle('has',!!v);saveQty();});
+$('#fillRec').addEventListener('click',()=>{let n=0;view().forEach(({x,c})=>{if(c.send>0){D.qty[x.oNo]=c.send;n++;}});saveQty();renderStock();toast(n?'지금 표에 보이는 옵션 중 '+n+'개를 권장 수량으로 채웠습니다':'권장 입고가 있는 옵션이 없습니다');});
+$('#clearQty').addEventListener('click',()=>{if(Object.keys(D.qty).length&&!confirm('적어 둔 입고 수량을 모두 비울까요?'))return;D.qty={};saveQty();renderStock();});
+$('#dlIn').addEventListener('click',dlIn);$('#dlSm').addEventListener('click',dlSm);$('#dlCsv').addEventListener('click',dlCsv);
+(function(){let pw='';try{pw=sessionStorage.getItem('clv_pw_s')||localStorage.getItem('clv_pw')||'';}catch(e){}if(pw){$('#pw').value=pw;start(pw,true);}})();
+})();
+</script>
+</body></html>
