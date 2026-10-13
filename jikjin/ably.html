@@ -259,7 +259,11 @@ function saveQty(){ls(LSQ,JSON.stringify(D.qty));qtyNote();}
 
 function loadXLSX(){return window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src=CFG.xlsx;s.onload=res;s.onerror=()=>rej(new Error('엑셀 라이브러리를 불러오지 못했습니다 (인터넷 연결 확인)'));document.head.appendChild(s);});}
 function qtyRows(){return D.items.filter(x=>+D.qty[x.oNo]>0);}
-// 입고신청: 에이블리 입고 신청 양식의 열 순서 (패키지명 · SKU번호 · 상품바코드번호 · 상품명 · 옵션정보 · 입고예정수량 · 입고 검품 방식). '프로' 검품은 바코드를 비움
+// 입고신청: 에이블리 공식 '엑셀_대량_입고_양식.xlsx'(2026. 09. 15, bulk_inbound_template_with_inspect_type)과 같은 모양
+//  시트 '시트1', 1~4행 안내(A:G 병합), 5행 머리글, 6행부터 자료. A~E 열은 텍스트. '프로' 검품은 바코드를 비움
+const IN_TPL=['ABLY 도착보장','확인해주세요!',
+  "* 1개의 패키지(박스, 대봉)에 함께 포장하여 입고할 SKU에는 동일한 패키지명을 반드시 입력해 주세요. (필수 항목)\n*  입력하신 패키지명을 기준으로 패키지가 생성됩니다. (예: 패키지명을 3개 입력할 경우 입고 패키지 3개 생성)\n * 동일한 패키지명으로 입력된 SKU는 반드시 하나의 박스(또는 대봉)에 함께 포장하여 입고해 주셔야 합니다.\n*  패키지명은 한글, 영문, 숫자 등 자유롭게 작성 가능하며, 이후 입고 신청 내역을 조회할 때 검색어로 활용할 수 있습니다.\n*  상품 바코드 번호는 입고 신청 완료 후에는 변경이 불가하오니, 입력 시 신중하게 확인해 주세요.\n*  이전에 입고된 이력이 있는 SKU의 경우, 기존에 등록·사용했던 상품 바코드 번호를 그대로 입력하셔야 합니다.\n*  입고 검품 방식으로 '프로'를 선택한 행은 상품 바코드 번호를 비워 주세요. 에이블리가 바코드를 발급하며, 이전에 입고한 이력이 있는 SKU는 기존 바코드가 그대로 사용됩니다.\n*  엑셀 파일은 2007 버전 이상으로 저장하여 업로드해 주세요. 이전 버전(.xls 등)으로 업로드 시 실패할 수 있습니다.",
+  "*아래 항목은 모두 필수로 입력해주세요. 입력이 누락되었을 시 업로드에 실패합니다. (단, 입고 검품 방식이 '프로'인 행의 상품바코드번호는 비워 주세요.)"];
 async function dlIn(){
   const L=qtyRows();if(!L.length)return toast('입고 수량을 적은 옵션이 없습니다');
   const noBc=L.filter(x=>!x.bc&&$('#insp').value!=='프로');
@@ -267,10 +271,15 @@ async function dlIn(){
   try{await loadXLSX();}catch(e){return toast(e.message,4000);}
   const pkg=$('#pkg').value.trim()||'1';ls('clv_ably_pkg_'+BRAND,pkg);const insp=$('#insp').value;
   const H=['패키지명','SKU번호','상품바코드번호','상품명','옵션정보','입고예정수량','입고 검품 방식'];
-  const R=L.map(x=>[pkg,/^\d+$/.test(x.sku||'')?+x.sku:x.sku,insp==='프로'?'':(x.bc||''),x.name,String(x.opt||'').replace(/ \/ /g,', '),+D.qty[x.oNo],insp]);
-  const ws=XLSX.utils.aoa_to_sheet([H,...R]);ws['!cols']=[{wch:12},{wch:14},{wch:20},{wch:50},{wch:22},{wch:12},{wch:14}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'입고신청');XLSX.writeFile(wb,CFG.label+'_도착보장_입고신청_'+todayKst().replace(/-/g,'')+'.xlsx');
-  toast('입고신청 '+R.length+'옵션 · '+fmt(R.reduce((a,r)=>a+r[5],0))+'개 내려받음 · 에이블리 입고 신청 양식에 붙여 넣어 올려 주세요',4500);
+  const R=L.map(x=>[pkg,String(x.sku||''),insp==='프로'?'':String(x.bc||''),x.name,String(x.opt||'').replace(/ \/ /g,', '),+D.qty[x.oNo],insp]);
+  const ws=XLSX.utils.aoa_to_sheet([...IN_TPL.map(t=>[t]),H,...R]);
+  ws['!merges']=[0,1,2,3].map(r=>({s:{r,c:0},e:{r,c:6}}));
+  ws['!cols']=[{wch:12},{wch:14},{wch:20},{wch:50},{wch:22},{wch:63},{wch:17}];
+  ws['!rows']=[{},{},{hpt:150},{hpt:30}];
+  // A~E 열(패키지명·SKU번호·바코드·상품명·옵션정보)은 공식 양식처럼 텍스트 셀
+  R.forEach((r,i)=>{for(let c=0;c<5;c++){const a=XLSX.utils.encode_cell({r:5+i,c});if(ws[a]){ws[a].t='s';ws[a].v=String(ws[a].v);ws[a].z='@';}}});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'시트1');XLSX.writeFile(wb,CFG.label+'_도착보장_입고신청_'+todayKst().replace(/-/g,'')+'.xlsx');
+  toast('입고신청 '+R.length+'옵션 · '+fmt(R.reduce((a,r)=>a+r[5],0))+'개 내려받음 · 에이블리 엑셀 대량 입고 요청에 그대로 올리면 됩니다',4500);
 }
 // 셀메이트 주문등록: 1-1 양식 열 (주문번호 · 바코드 · 상품명 · 옵션 · 수량 · 수령자 · 우편번호 · 주소). 바코드는 셀메 바코드(입력값이 셀메에 있으면 그것, 아니면 넣을 바코드)
 async function dlSm(){
