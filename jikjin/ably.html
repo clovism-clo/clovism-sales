@@ -97,17 +97,27 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
   <button type="button" class="btn sub" id="dlCsv">표 CSV</button>
   <span class="note" id="qtyNote"></span>
  </div>
+ <div class="bar" style="margin-top:-2px">
+  <button type="button" class="btn sub sm" id="aSave">저장</button>
+  <button type="button" class="btn sub sm" id="aGh">GitHub 연결</button>
+  <span class="note" id="aSt" style="margin:0"></span>
+ </div>
  <div class="wrap"><table id="stbl"><thead id="sth"></thead><tbody id="stb"></tbody></table></div>
  <p class="note" id="stNote"></p>
 </section>
 </main>
+<div class="ov" id="tokenOv" hidden><form class="box" id="tokenForm"><h2>GitHub 연결 (입고 수량 저장)</h2><p>입고 수량·패키지명을 모든 기기에서 같이 보려면 GitHub 토큰이 필요합니다. 토큰이 없으면 입력한 내용은 이 기기(브라우저)에만 남고, 엑셀 내려받기는 그대로 됩니다.<br>토큰은 이 기기에만 저장되며 직진 재고·출고 대시보드나 상품마스터에서 이미 연결했다면 같은 토큰을 그대로 씁니다.</p>
+<input type="password" id="tokenIn" placeholder="github_pat_… (비워 두면 연결 해제)" autocomplete="off">
+<div class="row" style="margin-top:12px"><button type="submit" class="btn pri">저장</button><button type="button" class="btn sub" id="tokenCancel">닫기</button></div><div class="err" id="tokenErr"></div></form></div>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
 // 에이블리 도착보장 대시보드 (2026-10-13). 루엣·달리 공용, ?brand= 로 전환. 자료는 <brand>/ably.enc (ably_compute.js 결과를 build_dashboard.js 가 암호화)
 const BRANDS={rouet:{label:'루엣'},dali:{label:'달리호텔'}};
 const BRAND=(function(){let b='';try{b=new URLSearchParams(location.search).get('brand')||'';}catch(e){}if(!BRANDS[b]){try{b=localStorage.getItem('clv_jj_brand')||'';}catch(e){}}if(!BRANDS[b])b='dali';try{localStorage.setItem('clv_jj_brand',b);}catch(e){}return b;})();
-const CFG={brand:BRAND,label:BRANDS[BRAND].label,dataUrl:BRAND+'/ably.enc',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+const CFG={brand:BRAND,label:BRANDS[BRAND].label,dataUrl:BRAND+'/ably.enc',repo:'clovism-clo/clovism-sales',lsToken:'clv_gh_token',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+// 입고 수량·패키지명은 ably_entries.json(같은 비밀번호로 암호화)에 페이지가 직접 저장 (상품마스터 campaigns.json 과 같은 방식)
+const AE={path:'jikjin/'+BRAND+'/ably_entries.json',url:BRAND+'/ably_entries.json',ls:'clv_ably_ent_'+BRAND};
 document.title='에이블리 도착보장 · '+CFG.label;
 const $=s=>document.querySelector(s);
 $('#loginBrand').textContent=CFG.label;
@@ -120,11 +130,59 @@ let toastT;function toast(m,ms){const t=$('#toast');t.textContent=m;t.classList.
 function todayKst(){return new Date(Date.now()+9*3600e3).toISOString().slice(0,10);}
 
 // 암호화: 매출보고·직진 대시보드와 같은 방식 (PBKDF2-SHA256 300,000회 + AES-256-GCM, salt16 + iv12 + 암호문)
-async function key(pw,salt){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:300000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);}
+async function key(pw,salt){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:300000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
 async function decBytes(buf,pw){const u=new Uint8Array(buf);const k=await key(pw,u.slice(0,16));return crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(16,28)},k,u.slice(28));}
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const tob64=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);};
+async function encJson(obj,pw){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));const k=await key(pw,salt);const data=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(obj)));return {v:1,salt:tob64(salt),iv:tob64(iv),data:tob64(new Uint8Array(data))};}
+async function decJson(j,pw){const k=await key(pw,b64(j.salt));const p=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(j.iv)},k,b64(j.data));return JSON.parse(new TextDecoder().decode(p));}
+
+// ---- GitHub 저장소 파일 읽기/쓰기 (상품마스터 페이지와 같은 코드) ----
+function ghHeaders(){return {Authorization:'Bearer '+S.token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};}
+async function ghGetPath(path){const r=await fetch(`https://api.github.com/repos/${CFG.repo}/contents/${path}`,{headers:ghHeaders(),cache:'no-store'});if(r.status===404)return {json:null,sha:null};if(r.status===401||r.status===403)throw new Error('GitHub 토큰이 유효하지 않습니다 ('+r.status+')');if(!r.ok)throw new Error('GitHub 읽기 실패 '+r.status);const j=await r.json();return {json:JSON.parse(new TextDecoder().decode(b64((j.content||'').replace(/\n/g,'')))),sha:j.sha};}
+async function ghPutPath(path,enc,sha,msg){const body={message:msg,content:btoa(JSON.stringify(enc))};if(sha)body.sha=sha;const r=await fetch(`https://api.github.com/repos/${CFG.repo}/contents/${path}`,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},ghHeaders()),body:JSON.stringify(body)});if(!r.ok){const t=await r.text().catch(()=>'');const e=new Error('GitHub 저장 실패 '+r.status+(t?': '+t.slice(0,120):''));e.status=r.status;throw e;}const j=await r.json();return j.content&&j.content.sha||sha;}
 
 const D={doc:null,items:[],tab:'set',sort:'',dir:1,q:'',st:'',base:'7',days:'6',need:false,sale:false,qty:{}};
 const LSQ='clv_ably_qty_'+BRAND, LSO='clv_ably_opt_'+BRAND;
+const S={pw:'',token:ls(CFG.lsToken)||''};
+
+// ---- 입고 수량 저장: E={qty:{옵션번호:[수량,시각]}, pkg:[패키지명,시각]}. 지운 수량은 [0,시각]으로 남겨 다른 기기에도 지워지게 함(14일 지나면 정리) ----
+let E={qty:{},pkg:null},eSha=null,eDirty=false,eSaved=null;
+const nowIso=()=>new Date().toISOString();
+function entLoadLocal(){
+  try{const j=JSON.parse(ls(AE.ls)||'null');if(j&&j.qty)return j;}catch(e){}
+  // 이전 형식(이 기기에만 저장하던 입고 수량·패키지명)을 옮겨 옴
+  const o={qty:{},pkg:null},t=nowIso();
+  try{const q=JSON.parse(ls(LSQ)||'{}')||{};for(const k in q)if(+q[k]>0)o.qty[k]=[+q[k],t];}catch(e){}
+  const p=ls('clv_ably_pkg_'+BRAND);if(p)o.pkg=[p,t];
+  return o;
+}
+const newer=(p,q)=>!p?q:!q?p:((q[1]||'')>(p[1]||'')?q:p);
+function entMerge(a,b){const o={qty:{},pkg:newer(a&&a.pkg,b&&b.pkg)};new Set([...Object.keys(a&&a.qty||{}),...Object.keys(b&&b.qty||{})]).forEach(k=>{o.qty[k]=newer(a.qty&&a.qty[k],b.qty&&b.qty[k]);});return o;}
+function entPrune(){const cut=new Date(Date.now()-14*864e5).toISOString();for(const k in E.qty){const v=E.qty[k];if(!(+v[0]>0)&&(v[1]||'')<cut)delete E.qty[k];}}
+function entApply(){D.qty={};for(const k in E.qty){const v=+E.qty[k][0];if(v>0)D.qty[k]=v;}if(E.pkg&&E.pkg[0])$('#pkg').value=E.pkg[0];}
+function entSaveLocal(){ls(AE.ls,JSON.stringify(E));}
+function setQty(o,v){v=Math.max(0,Math.round(+v||0));const cur=+(D.qty[o]||0);if(cur===v)return;E.qty[o]=[v,nowIso()];if(v)D.qty[o]=v;else delete D.qty[o];eDirty=true;}
+function entChanged(){entSaveLocal();qtyNote();aStatus();}
+async function entLoadRemote(){let j=null;if(S.token){const g=await ghGetPath(AE.path);eSha=g.sha;j=g.json;}else{try{const r=await fetch(AE.url+'?t='+Date.now(),{cache:'no-store'});if(r.ok)j=await r.json();}catch(e){}}if(!j)return null;try{return await decJson(j,S.pw);}catch(e){throw new Error('저장된 입고 수량을 열지 못했습니다 (비밀번호가 다른 기기에서 저장된 것일 수 있음)');}}
+async function entSync(){try{const r=await entLoadRemote();if(r){E=entMerge(E,r);entSaveLocal();entApply();renderStock();}}catch(e){toast(e.message||String(e),4000);}aStatus();}
+async function entSave(){
+  if(!S.token){entSaveLocal();eDirty=false;aStatus();toast('이 기기에만 저장했습니다 (GitHub 미연결 · [GitHub 연결] 을 눌러 연결)',3500);return;}
+  const b=$('#aSave');b.disabled=true;b.textContent='저장 중…';
+  try{
+    const pull=async()=>{const g=await ghGetPath(AE.path);eSha=g.sha;if(g.json)E=entMerge(await decJson(g.json,S.pw),E);};
+    const put=async()=>{entPrune();eSha=await ghPutPath(AE.path,await encJson(E,S.pw),eSha,`도착보장 입고 수량 (${CFG.label})`);};
+    try{if(eSha==null)await pull();await put();}catch(e){if(e.status===409||e.status===422){await pull();await put();}else throw e;}
+    entSaveLocal();entApply();eDirty=false;eSaved=new Date();renderStock();toast('GitHub 에 저장했습니다');
+  }catch(e){toast(e.message||String(e),4000);}
+  finally{b.disabled=false;b.textContent='저장';aStatus();}
+}
+function aStatus(){
+  const g=$('#aGh');g.textContent=S.token?'GitHub 연결됨 ✓':'GitHub 연결';g.classList.toggle('pri',false);
+  const sv=$('#aSave');sv.classList.toggle('pri',eDirty);
+  const hm=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  $('#aSt').textContent=eDirty?(S.token?'저장하지 않은 변경이 있습니다 · [저장] 을 누르면 다른 기기에도 보입니다':'이 기기에만 저장됩니다 · 다른 기기와 같이 보려면 [GitHub 연결]'):(S.token?(eSaved?'GitHub 에 저장됨 '+hm(eSaved):'GitHub 연결됨 · 다른 기기에서 저장한 입고 수량도 불러왔습니다'):'GitHub 미연결 · 입고 수량은 이 기기에만 저장됩니다');
+}
 
 async function open(pw){
   const r=await fetch(CFG.dataUrl+'?t='+Date.now(),{cache:'no-store'});
@@ -142,10 +200,12 @@ async function start(pw,remember){
     ls('clv_pw',remember?pw:null);
     $('#login').hidden=true;$('#app').hidden=false;
     try{const o=JSON.parse(ls(LSO)||'{}');['base','days','tab'].forEach(k=>{if(o[k])D[k]=o[k];});}catch(e){}
-    try{D.qty=JSON.parse(ls(LSQ)||'{}')||{};}catch(e){D.qty={};}
+    S.pw=pw;
     $('#fBase').value=D.base;$('#fDays').value=D.days;
-    $('#pkg').value=ls('clv_ably_pkg_'+BRAND)||((todayKst().slice(5).replace('-',''))+'(1)');
-    header();kpi();renderSet();renderStock();setTab(D.tab);
+    $('#pkg').value=(todayKst().slice(5).replace('-',''))+'(1)';
+    E=entLoadLocal();entSaveLocal();entApply();
+    header();kpi();renderSet();renderStock();setTab(D.tab);aStatus();
+    entSync();
   }catch(e){$('#loginErr').textContent=e.message||String(e);if(/비밀번호/.test(e.message||''))ls('clv_pw',null);}
   finally{btn.disabled=false;btn.textContent='열기';}
 }
@@ -254,8 +314,7 @@ function renderStock(){
   $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다.';
   qtyNote();
 }
-function qtyNote(){const L=D.items.filter(x=>+D.qty[x.oNo]>0);$('#qtyNote').textContent=L.length?'입고 수량 '+fmt(L.length)+'옵션 · '+fmt(L.reduce((a,x)=>a+(+D.qty[x.oNo]),0))+'개 (이 기기에 저장됨)':'입고 수량을 적은 옵션이 엑셀에 들어갑니다';}
-function saveQty(){ls(LSQ,JSON.stringify(D.qty));qtyNote();}
+function qtyNote(){const L=D.items.filter(x=>+D.qty[x.oNo]>0);$('#qtyNote').textContent=L.length?'입고 수량 '+fmt(L.length)+'옵션 · '+fmt(L.reduce((a,x)=>a+(+D.qty[x.oNo]),0))+'개':'입고 수량을 적은 옵션이 엑셀에 들어갑니다';}
 
 function loadXLSX(){return window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src=CFG.xlsx;s.onload=res;s.onerror=()=>rej(new Error('엑셀 라이브러리를 불러오지 못했습니다 (인터넷 연결 확인)'));document.head.appendChild(s);});}
 function qtyRows(){return D.items.filter(x=>+D.qty[x.oNo]>0);}
@@ -269,7 +328,7 @@ async function dlIn(){
   const noBc=L.filter(x=>!x.bc&&$('#insp').value!=='프로');
   if(noBc.length&&!confirm('바코드가 비어 있는 옵션이 '+noBc.length+'개 있습니다 ('+noBc.slice(0,3).map(x=>x.code+' '+x.opt).join(', ')+'…). 스탠다드 검품은 바코드가 필요합니다. 그래도 내려받을까요?'))return;
   try{await loadXLSX();}catch(e){return toast(e.message,4000);}
-  const pkg=$('#pkg').value.trim()||'1';ls('clv_ably_pkg_'+BRAND,pkg);const insp=$('#insp').value;
+  const pkg=$('#pkg').value.trim()||'1';const insp=$('#insp').value;
   const H=['패키지명','SKU번호','상품바코드번호','상품명','옵션정보','입고예정수량','입고 검품 방식'];
   const R=L.map(x=>[pkg,String(x.sku||''),insp==='프로'?'':String(x.bc||''),x.name,String(x.opt||'').replace(/ \/ /g,', '),+D.qty[x.oNo],insp]);
   const ws=XLSX.utils.aoa_to_sheet([...IN_TPL.map(t=>[t]),H,...R]);
@@ -315,10 +374,21 @@ $('#fDays').addEventListener('change',e=>{D.days=e.target.value;saveOpt();render
 $('#fNeed').addEventListener('change',e=>{D.need=e.target.checked;renderStock();});
 $('#fSale').addEventListener('change',e=>{D.sale=e.target.checked;renderStock();});
 $('#sth').addEventListener('click',e=>{const th=e.target.closest('th');if(!th||!th.dataset.k)return;const k=th.dataset.k;if(D.sort===k)D.dir=-D.dir;else{D.sort=k;D.dir=k[0]==='$'||['avail','inc','smAvail','d7','fin'].includes(k)?-1:1;}renderStock();});
-$('#stb').addEventListener('change',e=>{const inp=e.target;if(!inp.closest('td.q'))return;const o=inp.closest('tr').dataset.o;const v=Math.max(0,Math.round(+inp.value||0));if(v)D.qty[o]=v;else delete D.qty[o];inp.value=v||'';inp.closest('td').classList.toggle('has',!!v);saveQty();});
-$('#fillRec').addEventListener('click',()=>{let n=0;view().forEach(({x,c})=>{if(c.send>0){D.qty[x.oNo]=c.send;n++;}});saveQty();renderStock();toast(n?'지금 표에 보이는 옵션 중 '+n+'개를 권장 수량으로 채웠습니다':'권장 입고가 있는 옵션이 없습니다');});
-$('#clearQty').addEventListener('click',()=>{if(Object.keys(D.qty).length&&!confirm('적어 둔 입고 수량을 모두 비울까요?'))return;D.qty={};saveQty();renderStock();});
+$('#stb').addEventListener('change',e=>{const inp=e.target;if(!inp.closest('td.q'))return;const o=inp.closest('tr').dataset.o;const v=Math.max(0,Math.round(+inp.value||0));setQty(o,v);inp.value=v||'';inp.closest('td').classList.toggle('has',!!v);entChanged();});
+$('#fillRec').addEventListener('click',()=>{let n=0;view().forEach(({x,c})=>{if(c.send>0){setQty(x.oNo,c.send);n++;}});entChanged();renderStock();toast(n?'지금 표에 보이는 옵션 중 '+n+'개를 권장 수량으로 채웠습니다':'권장 입고가 있는 옵션이 없습니다');});
+$('#clearQty').addEventListener('click',()=>{if(Object.keys(D.qty).length&&!confirm('적어 둔 입고 수량을 모두 비울까요? (GitHub 에 저장하면 다른 기기에서도 비워집니다)'))return;Object.keys(D.qty).forEach(o=>setQty(o,0));entChanged();renderStock();});
+$('#pkg').addEventListener('change',e=>{const v=e.target.value.trim();if(E.pkg&&E.pkg[0]===v)return;E.pkg=[v,nowIso()];eDirty=true;entChanged();});
 $('#dlIn').addEventListener('click',dlIn);$('#dlSm').addEventListener('click',dlSm);$('#dlCsv').addEventListener('click',dlCsv);
+// ---- GitHub 연결·저장 ----
+$('#aSave').addEventListener('click',entSave);
+function tokenOpen(){$('#tokenIn').value='';$('#tokenErr').textContent=S.token?'현재 연결됨. 새 토큰을 넣거나 비워 두고 저장하면 해제됩니다.':'';$('#tokenOv').hidden=false;$('#tokenIn').focus();}
+$('#aGh').addEventListener('click',tokenOpen);
+$('#tokenCancel').addEventListener('click',()=>{$('#tokenOv').hidden=true;});
+$('#tokenForm').addEventListener('submit',async e=>{e.preventDefault();const t=$('#tokenIn').value.trim();if(!t){ls(CFG.lsToken,null);S.token='';eSha=null;$('#tokenOv').hidden=true;aStatus();toast('GitHub 연결을 해제했습니다');return;}S.token=t;try{const g=await ghGetPath(AE.path);eSha=g.sha;if(g.json)E=entMerge(E,await decJson(g.json,S.pw));entSaveLocal();entApply();ls(CFG.lsToken,t);$('#tokenOv').hidden=true;renderStock();aStatus();toast('GitHub 에 연결했습니다'+(eDirty?' · [저장] 을 누르면 이 기기 입력도 올라갑니다':''),3500);}catch(err){S.token='';$('#tokenErr').textContent=err.message||String(err);}});
+// 다른 탭(직진 대시보드·상품마스터)에서 토큰을 넣거나 지우면 이 탭에도 반영
+window.addEventListener('storage',e=>{if(e.key===CFG.lsToken){S.token=e.newValue||'';eSha=null;aStatus();}});
+window.addEventListener('beforeunload',e=>{if(eDirty&&S.token){e.preventDefault();e.returnValue='';}});
+$('#brands').addEventListener('click',e=>{const a=e.target.closest('a[data-brand]');if(!a||a.dataset.brand===BRAND||!(eDirty&&S.token))return;if(confirm('아직 GitHub 에 저장하지 않은 입고 수량이 있습니다(이 기기에는 남아 있음). 그래도 '+BRANDS[a.dataset.brand].label+'(으)로 바꿀까요?'))eDirty=false;else{e.stopPropagation();e.preventDefault();}},true);
 (function(){let pw='';try{pw=sessionStorage.getItem('clv_pw_s')||localStorage.getItem('clv_pw')||'';}catch(e){}if(pw){$('#pw').value=pw;start(pw,true);}})();
 })();
 </script>
