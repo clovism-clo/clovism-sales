@@ -95,6 +95,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
  </div>
  <div class="bar inbar">
   <button type="button" class="btn sub" id="fillRec" title="지금 표에 보이는 옵션 중 권장 입고가 있고 아직 입고 목록에 없는 옵션을 입고신청 탭 목록 끝에 더합니다 (수량 = 권장 입고와 보낼 수 있음 중 작은 값)">권장 수량을 입고 목록에 추가</button>
+  <button type="button" class="btn sub" id="resetQty" title="입고 수량과 입고신청 탭 목록을 모두 지웁니다">입고 수량 전체 초기화</button>
   <button type="button" class="btn sub" id="dlCsv">표 CSV</button>
   <span class="note" id="qtyNote"></span>
  </div>
@@ -109,7 +110,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
   <label>검품 방식 <select id="insp"><option>스탠다드</option><option>프로</option></select></label>
   <button type="button" class="btn pri" id="dlIn">입고신청 엑셀</button>
   <button type="button" class="btn" id="dlSm">셀메이트 주문등록 엑셀</button>
-  <button type="button" class="btn sub" id="clearIn">목록 비우기</button>
+  <button type="button" class="btn sub" id="clearIn">전체 초기화</button>
   <span class="note" id="inNote" style="margin:0"></span>
  </div>
  <div class="bar" style="margin-top:-2px">
@@ -516,7 +517,9 @@ $('#inb').addEventListener('click',e=>{
   const p=String(E.lines[i][0]||'').trim();if(p&&E.lines[i+1]&&!String(E.lines[i+1][0]||'').trim())E.lines[i+1][0]=p;
   E.lines.splice(i,1);touch();renderIn();renderStock();
 });
-$('#clearIn').addEventListener('click',()=>{if(!E.lines.length)return;if(!confirm('입고 목록 '+E.lines.length+'줄을 모두 지울까요? (GitHub 에 저장하면 다른 기기에서도 지워집니다)'))return;E.lines=[];touch();renderIn();renderStock();});
+function clearAllIn(){if(!E.lines.length)return toast('지울 입고 수량이 없습니다');const R=inRows();if(!confirm('입고 수량을 모두 지울까요?\n\n· 입고신청 목록 '+E.lines.length+'줄 ('+fmt(new Set(R.map(r=>r.x.oNo)).size)+'옵션 · '+fmt(R.reduce((a,r)=>a+r.q,0))+'개)\n\n'+(S.token?'[저장] 을 누르면 다른 기기에서도 지워집니다.':'GitHub 미연결이라 이 기기에서만 지워집니다.')))return;E.lines=[];touch();renderIn();renderStock();toast('입고 수량을 모두 지웠습니다'+(S.token?' · [저장] 을 눌러 주세요':''),4000);}
+$('#clearIn').addEventListener('click',clearAllIn);
+$('#resetQty').addEventListener('click',clearAllIn);
 $('#dlIn').addEventListener('click',dlIn);$('#dlSm').addEventListener('click',dlSm);$('#dlCsv').addEventListener('click',dlCsv);
 // ---- 패키징(송장번호) 파일 불러오기 (2026-10-21): 머리글에서 바코드 · 수량 · 패키지 · 송장 열을 찾고, 머리글이 없으면 값으로 찾음. 패키지 열이 없으면 송장번호마다 (1), (2)… ----
 const hasBc=b=>{const h=look(b);return !!(h&&h.length);};
