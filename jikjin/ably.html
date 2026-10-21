@@ -297,7 +297,7 @@ const COLS=[
  {k:'d7',l:'최근 7일',s:'일별',c:'l',v:x=>x.s7},
  {k:'$s',l:'기간 판매',s:'판매 기준',v:(x,c)=>c.s},
  {k:'$avg',l:'일평균',v:(x,c)=>c.avg},
- {k:'$qty',l:'입고 목록',s:'입고신청 탭',v:x=>+(D.qty[x.oNo]||0)},
+ {k:'$qty',l:'입고 수량',s:'직접 입력',c:'q',v:x=>+(D.qty[x.oNo]||0)},
  {k:'$left',l:'남은 일수',s:'판매 가능 ÷ 일평균',v:(x,c)=>c.left==null?1e9:c.left},
  {k:'$rec',l:'권장 입고',s:'목표 일수 기준',v:(x,c)=>c.rec},
  {k:'$can',l:'보낼 수 있음',s:'셀메 창고 − 미발송',v:(x,c)=>c.can},
@@ -328,7 +328,7 @@ function renderStock(){
    +'<td>'+(x.smAvail==null?'-':x.smAvail?fmt(x.smAvail):'<span class="zero">0</span>')+'</td>'
    +'<td class="l"><span class="d7" title="'+esc((D.doc.days||[]).map((d,i)=>d.slice(5)+' '+x.d7[i]).join(', '))+'">'+(x.d7||[]).join(' ')+'</span><small>합 '+fmt(x.s7)+'</small></td>'
    +'<td>'+fmt(c.s)+'</td><td>'+fmt1(c.avg)+'</td>'
-   +'<td>'+(q?'<b>'+fmt(q)+'</b>':'<span class="zero">-</span>')+'</td>'
+   +qtyCell(x,q)
    +'<td class="'+leftCls+'">'+(c.left==null?'-':fmt1(c.left)+'일')+'</td>'
    +'<td>'+(c.rec?'<b>'+fmt(c.rec)+'</b>':'<span class="zero">0</span>')+'</td>'
    +'<td>'+(c.can==null?'-':c.can<c.rec?'<span class="warm">'+fmt(c.can)+'</span>':fmt(c.can))+'</td>'
@@ -336,7 +336,17 @@ function renderStock(){
   $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다.';
   qtyNote();
 }
-function qtyNote(){const L=D.items.filter(x=>+D.qty[x.oNo]>0);$('#qtyNote').textContent=L.length?'입고 목록 '+fmt(L.length)+'옵션 · '+fmt(L.reduce((a,x)=>a+(+D.qty[x.oNo]),0))+'개 (입고신청 탭에서 순서·패키지 편집)':'입고 엑셀은 입고신청 탭에서 바코드를 넣는 순서대로 만듭니다';}
+// 재고 탭 입고 수량 칸 = 입고신청 목록에서 이 옵션 줄의 수량. 적으면 목록 줄을 고치거나 끝에 더함
+function optLines(o){const I=[];E.lines.forEach((l,i)=>{const h=look(l[1]);if(h&&h.length===1&&h[0].oNo===o)I.push(i);});return I;}
+function qtyCell(x,q){const I=optLines(x.oNo),multi=I.length>1;
+  return '<td class="q'+(q?' has':'')+'"><input type="number" min="0" step="1" inputmode="numeric" value="'+(q?esc(q):'')+'"'+(multi?' readonly title="여러 줄('+I.map(i=>i+1).join(', ')+'번)에 나뉘어 있습니다. 입고신청 탭에서 고쳐 주세요"':inBc(x)?' title="적은 수량은 입고신청 탭 목록에 같이 들어갑니다"':' disabled title="입고 바코드(솔루션사 코드)가 없어 입고 목록에 넣을 수 없습니다"')+' aria-label="입고 수량"></td>';}
+function setOptQty(x,v){const I=optLines(x.oNo);
+  if(I.length>1){toast('이 옵션은 입고신청 목록 여러 줄에 나뉘어 있습니다. 입고신청 탭에서 고쳐 주세요',4000);return false;}
+  if(I.length===1){const i=I[0];if(v>0)E.lines[i][2]=v;else{const p=String(E.lines[i][0]||'').trim();if(p&&E.lines[i+1]&&!String(E.lines[i+1][0]||'').trim())E.lines[i+1][0]=p;E.lines.splice(i,1);}}
+  else if(v>0){if(!inBc(x)){toast('입고 바코드(솔루션사 코드)가 없어 입고 목록에 넣을 수 없습니다',4000);return false;}E.lines.push(['',inBc(x),v]);}
+  else return true;
+  touch();return true;}
+function qtyNote(){const L=D.items.filter(x=>+D.qty[x.oNo]>0);$('#qtyNote').textContent=L.length?'입고 목록 '+fmt(L.length)+'옵션 · '+fmt(L.reduce((a,x)=>a+(+D.qty[x.oNo]),0))+'개 · 여기 적은 수량은 입고신청 탭 목록에 같이 들어가고, 순서 · 패키지는 입고신청 탭에서 고칩니다':'입고 수량 칸에 적거나, 입고신청 탭에서 바코드를 넣는 순서대로 적을 수 있습니다';}
 
 // ---- 입고신청 목록: 패키지명 · 바코드 · 수량을 적은 순서 그대로 엑셀에 들어감. 바코드로 도착보장 옵션을 찾아 SKU · 상품명 · 옵션을 채움(VLOOKUP) ----
 const nb=s=>String(s==null?'':s).trim().toUpperCase();
@@ -465,6 +475,9 @@ $('#fDays').addEventListener('change',e=>{D.days=e.target.value;saveOpt();render
 $('#fNeed').addEventListener('change',e=>{D.need=e.target.checked;renderStock();});
 $('#fSale').addEventListener('change',e=>{D.sale=e.target.checked;renderStock();});
 $('#sth').addEventListener('click',e=>{const th=e.target.closest('th');if(!th||!th.dataset.k)return;const k=th.dataset.k;if(D.sort===k)D.dir=-D.dir;else{D.sort=k;D.dir=k[0]==='$'||['avail','inc','smAvail','d7','fin'].includes(k)?-1:1;}renderStock();});
+$('#stb').addEventListener('change',e=>{const inp=e.target;if(!inp.closest('td.q')||inp.readOnly||inp.disabled)return;const o=inp.closest('tr').dataset.o,x=D.items.find(y=>String(y.oNo)===o);if(!x)return;const v=Math.max(0,Math.round(+inp.value||0));
+  if(!setOptQty(x,v)){inp.value=D.qty[o]||'';return;}D.qty=inQty();inp.value=D.qty[o]||'';inp.closest('td').classList.toggle('has',!!D.qty[o]);renderIn();qtyNote();});
+$('#stb').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.closest('td.q'))return;e.preventDefault();const tr=e.target.closest('tr').nextElementSibling;const n=tr&&tr.querySelector('td.q input:not([disabled])');if(n){n.focus();try{n.select();}catch(_){}}else e.target.blur();});
 $('#fillRec').addEventListener('click',()=>{const have=new Set(inRows().map(r=>r.x.oNo));let n=0;view().forEach(({x,c})=>{if(c.send>0&&!have.has(x.oNo)&&inBc(x)){E.lines.push(['',inBc(x),c.send]);n++;}});if(!n)return toast('입고 목록에 더할 권장 입고가 없습니다');touch();renderIn();renderStock();toast('입고신청 탭 목록 끝에 '+n+'줄 추가했습니다',3000);});
 // 입고신청 목록 편집
 $('#inb').addEventListener('input',e=>{
