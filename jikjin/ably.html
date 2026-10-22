@@ -60,6 +60,8 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
 .del{font:inherit;border:0;background:none;color:#9ca3af;cursor:pointer;font-size:17px;min-height:30px;padding:0 8px}.del:hover{color:var(--r)}
 #tabIn.drop .wrap{outline:2px dashed var(--acc);outline-offset:2px}
 @media(max-width:600px){.wrap{max-height:none}}
+.cfbtn{float:right;margin:-2px -6px 0 4px;padding:0 4px;border:1px solid transparent;border-radius:4px;background:none;color:#9ca3af;font-size:11px;line-height:16px;cursor:pointer;font-weight:400}.cfbtn:hover{border-color:var(--line);background:#fff;color:#374151}.cfbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.cfp{position:fixed;z-index:60;width:290px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:10px;font-size:12.5px;color:#111827;text-align:left;font-weight:400}.cfp .cft{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.cfp .cft button{padding:3px 8px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:11.5px;cursor:pointer;color:#374151}.cfp .cft button.on{background:#eef2ff;border-color:var(--acc);color:var(--acc);font-weight:600}.cfp .cft button.f::after{content:' ●';color:var(--acc);font-size:9px}.cfp .cfh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}.cfp .cfh span{color:var(--mut);font-size:11.5px}.cfp .cfs{display:flex;gap:6px;margin-bottom:8px}.cfp .cfs button{flex:1;padding:5px;border:1px solid var(--line);border-radius:6px;background:#f9fafb;cursor:pointer;font-size:12px}.cfp .cfs button:hover{background:#eef2ff}.cfp .cfr{display:flex;align-items:center;gap:4px;margin-bottom:8px;color:#374151}.cfp .cfr input{width:82px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font-size:12px}.cfp .cfq{width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12.5px;margin-bottom:6px}.cfp label{display:flex;align-items:center;gap:6px;padding:3px 2px;cursor:pointer;border-radius:4px;margin:0;font-size:12.5px;color:#111827}.cfp label:hover{background:#f3f4f6}.cfp label .v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfp label small{color:var(--mut);font-size:11px;display:inline}.cfp label.all{border-bottom:1px solid var(--line);border-radius:0;margin-bottom:2px}.cfp .cfl{max-height:260px;overflow:auto}.cfp .cfm{color:var(--mut);font-size:11.5px;padding:6px 2px}.cfp .cfb{display:flex;gap:6px;justify-content:flex-end;margin-top:8px;border-top:1px solid var(--line);padding-top:8px}.cfp .cfb [data-a=clear]{margin-right:auto}
 </style></head><body>
 <div class="ov" id="login"><form class="box" id="loginForm"><h2>에이블리 도착보장 대시보드 <span class="tag" id="loginBrand"></span></h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
 <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" autofocus>
@@ -92,6 +94,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
   <label>목표 <select id="fDays"><option value="6">6일분 (기본)</option><option value="10">10일분 (설 연휴)</option><option value="14">14일분</option></select></label>
   <label class="chk"><input type="checkbox" id="fNeed"> 입고 필요만</label>
   <label class="chk"><input type="checkbox" id="fSale"> 7일 판매 있는 것만</label>
+  <button type="button" class="btn sub" id="cfClrA" hidden></button>
  </div>
  <div class="bar inbar">
   <button type="button" class="btn sub" id="fillRec" title="지금 표에 보이는 옵션 중 권장 입고가 있고 아직 입고 목록에 없는 옵션을 입고신청 탭 목록 끝에 더합니다 (수량 = 권장 입고와 보낼 수 있음 중 작은 값)">권장 수량을 입고 목록에 추가</button>
@@ -304,19 +307,63 @@ const COLS=[
  {k:'$can',l:'보낼 수 있음',s:'셀메 창고 − 미발송',v:(x,c)=>c.can},
  {k:'fin',l:'최종 판매가',s:'에이블리 앱',v:x=>x.fin},
  {k:'oNo',l:'옵션 번호',c:'l',v:x=>x.oNo}];
-function view(){
+// ---- 엑셀식 열 필터 (2026-10-22, 직진·도착보장 공용): CFX(이름, {f:{키:{l,get,num,pct}}, rows(skip), apply(), sort(키,오름차순)|null, sortable(키), clr:'#해제단추'}) ----
+const CFR={};let CFP=null;
+function cfClose(){if(CFP){CFP.remove();CFP=null;}}
+function CFX(id,o){const I={id,o,st:{}};
+I.txt=(x,k)=>{const f=o.f[k],v=f.get(x);if(v==null||v===''||(typeof v==='number'&&isNaN(v)))return '';if(typeof v==='number'){if(f.pct)return (Math.round(v*1000)/10)+'%';return Number.isInteger(v)?v.toLocaleString('ko-KR'):(Math.round(v*100)/100).toLocaleString('ko-KR');}return String(v);};
+I.pass=(x,skip)=>{for(const k in I.st){if(k===skip)continue;const s=I.st[k];if(s.vals&&!s.vals.has(I.txt(x,k)))return false;if(s.min!=null||s.max!=null){let v=o.f[k].get(x);if(typeof v!=='number'||isNaN(v))return false;if(o.f[k].pct)v*=100;if(s.min!=null&&v<s.min)return false;if(s.max!=null&&v>s.max)return false;}}return true;};
+I.on=ks=>ks.some(k=>I.st[k]);
+I.btn=ks=>`<button type="button" class="cfbtn${I.on(ks)?' on':''}" data-cf="${id}" data-keys="${ks.join(',')}" title="${esc(ks.map(k=>o.f[k].l).join(' · '))} 필터" aria-label="${esc(ks.map(k=>o.f[k].l).join(' · '))} 필터">▾</button>`;
+I.labels=()=>Object.keys(I.st).map(k=>o.f[k].l);
+I.sum=()=>{document.querySelectorAll(`.cfbtn[data-cf="${id}"]`).forEach(b=>b.classList.toggle('on',I.on(b.dataset.keys.split(','))));const b=o.clr&&document.querySelector(o.clr);if(b){const n=Object.keys(I.st).length;b.hidden=!n;b.textContent='열 필터 '+n+'개 해제';b.title='필터가 걸린 항목: '+I.labels().join(', ');}};
+I.run=()=>{o.apply();I.sum();};
+I.clear=()=>{I.st={};cfClose();I.run();};
+if(o.clr)setTimeout(()=>{const b=document.querySelector(o.clr);if(b)b.addEventListener('click',()=>{I.clear();toast('열 필터를 모두 해제했습니다');});},0);
+CFR[id]=I;return I;}
+function cfDeco(thead,I,map){[...thead.querySelectorAll('th')].forEach((th,i)=>{const ks=Array.isArray(map)?map[i]:map[th.dataset.k];if(ks&&!th.querySelector('.cfbtn'))th.insertAdjacentHTML('afterbegin',I.btn(ks));});}
+function cfOpen(I,keys,btn){cfClose();const o=I.o;let k=keys.find(x=>I.st[x])||keys[0];
+ const p=CFP=document.createElement('div');p.className='cfp';p.dataset.b=I.id+'|'+keys.join(',');p.setAttribute('role','dialog');document.body.appendChild(p);
+ const build=()=>{const f=o.f[k],isNum=!!f.num,base=o.rows(k),cnt=new Map();base.forEach(x=>{const t=I.txt(x,k);cnt.set(t,(cnt.get(t)||0)+1);});
+  const vals=[...cnt.keys()];if(isNum){const nv=t=>t===''?Infinity:parseFloat(t.replace(/[,%]/g,''));vals.sort((a,b)=>nv(a)-nv(b));}else vals.sort((a,b)=>a===''?1:b===''?-1:a.localeCompare(b,'ko'));
+  const s=I.st[k]||{},sel=new Set(s.vals?vals.filter(v=>s.vals.has(v)):vals);let q='',shown=[];const canSort=o.sort&&(!o.sortable||o.sortable(k));
+  p.innerHTML=(keys.length>1?`<div class="cft">${keys.map(x=>`<button type="button" data-k="${x}" class="${x===k?'on':''}${I.st[x]?' f':''}">${esc(o.f[x].l)}</button>`).join('')}</div>`:'')+`<div class="cfh"><b>${esc(f.l)}</b><span>값 ${fmt(vals.length)}개</span></div>`+(canSort?`<div class="cfs"><button type="button" data-s="a">▲ 오름차순</button><button type="button" data-s="d">▼ 내림차순</button></div>`:'')+(isNum?`<div class="cfr">범위 <input type="number" class="mn" placeholder="이상" value="${s.min!=null?s.min:''}"> ~ <input type="number" class="mx" placeholder="이하" value="${s.max!=null?s.max:''}">${f.pct?' %':''}</div>`:'')+`<input type="search" class="cfq" placeholder="값 검색" autocomplete="off"><label class="all"><input type="checkbox"><span class="v">(모두 선택)</span></label><div class="cfl"></div><div class="cfb"><button type="button" class="btn sub" data-a="clear">필터 지우기</button><button type="button" class="btn sub" data-a="cancel">취소</button><button type="button" class="btn pri" data-a="ok">확인</button></div>`;
+  const draw=()=>{const ql=q.toLowerCase();shown=vals.map((v,i)=>i).filter(i=>!ql||(vals[i]||'(빈 칸)').toLowerCase().includes(ql));const lim=shown.slice(0,1000);p.querySelector('.cfl').innerHTML=lim.map(i=>`<label><input type="checkbox" data-i="${i}"${sel.has(vals[i])?' checked':''}><span class="v">${vals[i]===''?'<i>(빈 칸)</i>':esc(vals[i])}</span><small>${fmt(cnt.get(vals[i]))}</small></label>`).join('')+(shown.length>lim.length?`<div class="cfm">값이 많아 ${fmt(lim.length)}개만 보입니다 · 검색으로 좁혀 주세요</div>`:'')+(!shown.length?'<div class="cfm">맞는 값이 없습니다</div>':'');const all=p.querySelector('.all input'),n=shown.filter(i=>sel.has(vals[i])).length;all.checked=shown.length>0&&n===shown.length;all.indeterminate=n>0&&n<shown.length;};
+  draw();
+  const t=p.querySelector('.cft');if(t)t.addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(b&&b.dataset.k!==k){k=b.dataset.k;build();place();}});
+  p.querySelector('.cfq').addEventListener('input',e=>{q=e.target.value.trim();draw();});
+  p.querySelector('.all input').addEventListener('change',e=>{shown.forEach(i=>{if(e.target.checked)sel.add(vals[i]);else sel.delete(vals[i]);});draw();});
+  p.querySelector('.cfl').addEventListener('change',e=>{const i=e.target.dataset.i;if(i==null)return;if(e.target.checked)sel.add(vals[+i]);else sel.delete(vals[+i]);draw();});
+  const sb=p.querySelector('.cfs');if(sb)sb.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cfClose();o.sort(k,b.dataset.s==='a');I.sum();});
+  p.querySelector('.cfb').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.a)return;const a=b.dataset.a;if(a==='cancel')return cfClose();if(a==='clear'){delete I.st[k];cfClose();I.run();return;}
+   const allow=q?new Set(shown.map(i=>vals[i]).filter(v=>sel.has(v))):new Set(sel);const rd=c=>{const el=p.querySelector(c);if(!el||el.value.trim()==='')return null;const n=parseFloat(el.value);return isNaN(n)?null:n;};const mn=rd('.mn'),mx=rd('.mx');
+   if(!allow.size)return toast('값을 하나 이상 골라 주세요');
+   if(allow.size===vals.length&&vals.every(v=>allow.has(v))&&mn==null&&mx==null)delete I.st[k];else I.st[k]={vals:allow.size===vals.length?null:allow,min:mn,max:mx};cfClose();I.run();});
+  p.onkeydown=e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='checkbox'){e.preventDefault();p.querySelector('[data-a=ok]').click();}};
+  setTimeout(()=>{const x=p.querySelector(isNum?'.mn':'.cfq');if(x)x.focus();},0);};
+ const place=()=>{const r=btn.getBoundingClientRect();p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';const top=r.bottom+4;p.style.top=(top+p.offsetHeight>innerHeight-8?Math.max(8,innerHeight-8-p.offsetHeight):top)+'px';};
+ build();place();}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.cfbtn[data-cf]');if(b){e.stopPropagation();e.preventDefault();if(CFP&&CFP.dataset.b===b.dataset.cf+'|'+b.dataset.keys)return cfClose();const I=CFR[b.dataset.cf];if(I)cfOpen(I,b.dataset.keys.split(','),b);return;}if(CFP&&!e.composedPath().includes(CFP))cfClose();},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&CFP)cfClose();});document.addEventListener('scroll',e=>{if(CFP&&!CFP.contains(e.target))cfClose();},true);window.addEventListener('resize',()=>cfClose());
+// 재고 표 열 필터 (행 = {x: 옵션, c: 계산값})
+const ATXT=['code','name','opt','gOpen','bc','st','oNo','issue'];
+const ACF=CFX('ab',{f:Object.assign(Object.fromEntries(COLS.map(c=>[c.k,{l:c.l,num:!ATXT.includes(c.k),get:it=>c.v(it.x,it.c)}])),{opt:{l:'옵션',get:it=>it.x.opt||''},gOpen:{l:'진열',get:it=>it.x.gOpen||''},issue:{l:'점검',get:it=>it.x.issue&&ISSUE[it.x.issue]?ISSUE[it.x.issue][0]:''},d7:{l:'최근 7일 합',num:1,get:it=>+it.x.s7||0},$left:{l:'남은 일수',num:1,get:it=>it.c.left==null?null:Math.round(it.c.left*10)/10},$avg:{l:'일평균',num:1,get:it=>it.c.avg==null?null:Math.round(it.c.avg*100)/100}}),
+ rows:k=>view(k,true),apply:()=>renderStock(),clr:'#cfClrA',sort:(k,asc)=>{D.sort=k;D.dir=asc?1:-1;renderStock();},sortable:k=>COLS.some(c=>c.k===k)});
+const AMAP={code:['code','issue'],name:['name','opt','gOpen']};COLS.forEach(c=>{if(!AMAP[c.k])AMAP[c.k]=[c.k];});
+function view(skip,nosort){
   const q=D.q.trim().toLowerCase();
   let V=D.items.map(x=>({x,c:calc(x)}));
   if(q)V=V.filter(({x})=>[x.code,x.name,x.opt,x.bc,x.sol,x.gNo,x.oNo,x.sku,x.sug].some(v=>v&&String(v).toLowerCase().includes(q)));
   if(D.st)V=V.filter(({x})=>x.st===D.st);
   if(D.need)V=V.filter(({c})=>c.rec>0);
   if(D.sale)V=V.filter(({x})=>x.s7>0);
+  V=V.filter(it=>ACF.pass(it,skip));if(nosort)return V;
   if(D.sort){const col=COLS.find(c=>c.k===D.sort);V.sort((a,b)=>{const va=col.v(a.x,a.c),vb=col.v(b.x,b.c);if(typeof va==='number'||typeof vb==='number')return ((va==null?-1e12:va)-(vb==null?-1e12:vb))*D.dir;return String(va==null?'':va).localeCompare(String(vb==null?'':vb),'ko')*D.dir;});}
   else V.sort((a,b)=>(a.c.left==null?1e9:a.c.left)-(b.c.left==null?1e9:b.c.left)||(b.x.s7-a.x.s7));
   return V;
 }
 function renderStock(){
-  $('#sth').innerHTML='<tr>'+COLS.map(c=>'<th class="'+(c.c||'')+(D.sort===c.k?' on':'')+'" data-k="'+c.k+'">'+esc(c.l)+(D.sort===c.k?(D.dir>0?' ▲':' ▼'):'')+(c.s?'<small>'+esc(c.s)+'</small>':'')+'</th>').join('')+'</tr>';
+  $('#sth').innerHTML='<tr>'+COLS.map(c=>'<th class="'+(c.c||'')+(D.sort===c.k?' on':'')+'" data-k="'+c.k+'">'+ACF.btn(AMAP[c.k])+esc(c.l)+(D.sort===c.k?(D.dir>0?' ▲':' ▼'):'')+(c.s?'<small>'+esc(c.s)+'</small>':'')+'</th>').join('')+'</tr>';
   D.qty=inQty();
   const V=view();
   $('#tcStock').textContent=D.items.filter(x=>calc(x).rec>0).length;
