@@ -14,6 +14,7 @@ main{max-width:1280px;margin:0 auto;padding:12px 16px}
 .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(min-width:760px){.kpi{grid-template-columns:repeat(4,1fr)}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .card .t{font-size:11.5px;color:var(--mut)}.card .n{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}.card .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+@media(min-width:1000px){.kpi{grid-template-columns:repeat(5,1fr)}}.card.clk{cursor:pointer}.card.clk:hover{border-color:var(--acc)}.card.clk.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset;background:#eef2ff}.card.clk .n{color:var(--acc)}
 .card.bad{border-color:#fecaca;background:#fef2f2}.card.bad .n{color:var(--r)}.card.good .n{color:var(--ok)}
 .tabs{display:flex;gap:6px;margin:14px 0 4px;border-bottom:1px solid var(--line)}
 .tabs button{font:inherit;font-size:14px;font-weight:600;padding:9px 14px;border:0;border-bottom:3px solid transparent;background:none;color:var(--mut);cursor:pointer;min-height:40px}
@@ -73,6 +74,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
  <div class="card"><div class="t">도착보장 옵션</div><div class="n" id="kOpt">-</div><div class="s" id="kOptS"></div></div>
  <div class="card"><div class="t">판매 가능 재고 · 입고 예정</div><div class="n" id="kStock">-</div><div class="s" id="kStockS"></div></div>
  <div class="card"><div class="t">최근 7일 판매</div><div class="n" id="kSale">-</div><div class="s" id="kSaleS"></div></div>
+ <div class="card clk" id="kInC" role="button" tabindex="0" title="누르면 재고 · 입고 탭에서 입고 수량을 적은 옵션만 보입니다 (다시 누르면 해제)"><div class="t">입고 입력 <small>입고신청 목록 전체</small></div><div class="n" id="kIn">-</div><div class="s" id="kInS"></div></div>
  <div class="card" id="kIssueC"><div class="t">세팅 확인 필요</div><div class="n" id="kIssue">-</div><div class="s" id="kIssueS"></div></div>
 </div>
 <div class="tabs" role="tablist"><button type="button" data-tab="set" role="tab">세팅 점검<span class="c" id="tcSet">0</span></button><button type="button" data-tab="stock" role="tab">재고 · 입고<span class="c" id="tcStock">0</span></button><button type="button" data-tab="in" role="tab">입고신청<span class="c" id="tcIn">0</span></button></div>
@@ -94,6 +96,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
   <label>목표 <select id="fDays"><option value="6">6일분 (기본)</option><option value="10">10일분 (설 연휴)</option><option value="14">14일분</option></select></label>
   <label class="chk"><input type="checkbox" id="fNeed"> 입고 필요만</label>
   <label class="chk"><input type="checkbox" id="fSale"> 7일 판매 있는 것만</label>
+  <label class="chk"><input type="checkbox" id="fIn"> 입고 수량 적은 것만</label>
   <button type="button" class="btn sub" id="cfClrA" hidden></button>
  </div>
  <div class="bar inbar">
@@ -161,7 +164,7 @@ function ghHeaders(){return {Authorization:'Bearer '+S.token,Accept:'application
 async function ghGetPath(path){const r=await fetch(`https://api.github.com/repos/${CFG.repo}/contents/${path}`,{headers:ghHeaders(),cache:'no-store'});if(r.status===404)return {json:null,sha:null};if(r.status===401||r.status===403)throw new Error('GitHub 토큰이 유효하지 않습니다 ('+r.status+')');if(!r.ok)throw new Error('GitHub 읽기 실패 '+r.status);const j=await r.json();return {json:JSON.parse(new TextDecoder().decode(b64((j.content||'').replace(/\n/g,'')))),sha:j.sha};}
 async function ghPutPath(path,enc,sha,msg){const body={message:msg,content:btoa(JSON.stringify(enc))};if(sha)body.sha=sha;const r=await fetch(`https://api.github.com/repos/${CFG.repo}/contents/${path}`,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},ghHeaders()),body:JSON.stringify(body)});if(!r.ok){const t=await r.text().catch(()=>'');const e=new Error('GitHub 저장 실패 '+r.status+(t?': '+t.slice(0,120):''));e.status=r.status;throw e;}const j=await r.json();return j.content&&j.content.sha||sha;}
 
-const D={doc:null,items:[],tab:'set',sort:'',dir:1,q:'',st:'',base:'7',days:'6',need:false,sale:false,qty:{}};
+const D={doc:null,items:[],tab:'set',sort:'',dir:1,q:'',st:'',base:'7',days:'6',need:false,sale:false,inOnly:false,qty:{}};
 const LSQ='clv_ably_qty_'+BRAND, LSO='clv_ably_opt_'+BRAND;
 const S={pw:'',token:ls(CFG.lsToken)||''};
 
@@ -357,6 +360,7 @@ function view(skip,nosort){
   if(D.st)V=V.filter(({x})=>x.st===D.st);
   if(D.need)V=V.filter(({c})=>c.rec>0);
   if(D.sale)V=V.filter(({x})=>x.s7>0);
+  if(D.inOnly)V=V.filter(({x})=>+D.qty[x.oNo]>0);
   V=V.filter(it=>ACF.pass(it,skip));if(nosort)return V;
   if(D.sort){const col=COLS.find(c=>c.k===D.sort);V.sort((a,b)=>{const va=col.v(a.x,a.c),vb=col.v(b.x,b.c);if(typeof va==='number'||typeof vb==='number')return ((va==null?-1e12:va)-(vb==null?-1e12:vb))*D.dir;return String(va==null?'':va).localeCompare(String(vb==null?'':vb),'ko')*D.dir;});}
   else V.sort((a,b)=>(a.c.left==null?1e9:a.c.left)-(b.c.left==null?1e9:b.c.left)||(b.x.s7-a.x.s7));
@@ -461,7 +465,14 @@ function inNote(){
   const R=inRows(),B=inBad();
   $('#inNote').innerHTML=R.length?'패키지 '+new Set(R.map(r=>r.p)).size+'개 · '+fmt(R.length)+'줄 · '+fmt(R.reduce((a,r)=>a+r.q,0))+'개'+(B.length?' · <span class="ng">확인 필요 '+B.length+'줄</span>':''):'바코드와 수량을 적은 줄이 순서대로 엑셀에 들어갑니다';
   $('#tcIn').textContent=R.length;
+  kIn(R,B);
 }
+// 입고 입력 카드 = 입고신청 목록 전체 합계 (옵션별로 합침). 누르면 그 옵션만 재고 표에 보임
+function kIn(R,B){R=R||inRows();B=B||inBad();const opt=new Set(R.map(r=>r.x.oNo)),q=R.reduce((a,r)=>a+r.q,0);
+  $('#kIn').textContent=opt.size?fmt(opt.size)+'옵션 · '+fmt(q)+'개':'없음';
+  $('#kInS').innerHTML=opt.size?'패키지 '+fmt(new Set(R.map(r=>r.p)).size)+'개'+(B.length?' · <span class="ng">확인 필요 '+B.length+'줄</span>':'')+(D.inOnly?' · 지금 이 옵션만 보는 중':' · 누르면 이 옵션만'):'재고 탭 입고 수량 칸이나 입고신청 탭에 적으면 여기 합계가 나옵니다';
+  $('#kInC').classList.toggle('on',D.inOnly);}
+function setInOnly(on){D.inOnly=on;$('#fIn').checked=on;if(on&&D.tab!=='stock')setTab('stock');renderStock();kIn();}
 function inChanged(){touch();refreshIn();}
 
 function loadXLSX(){return window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src=CFG.xlsx;s.onload=res;s.onerror=()=>rej(new Error('엑셀 라이브러리를 불러오지 못했습니다 (인터넷 연결 확인)'));document.head.appendChild(s);});}
@@ -497,9 +508,10 @@ async function dlSm(){
   // 주문번호는 엑셀 양식처럼 오늘 날짜(=TODAY()) 값
   const t=todayKst().split('-').map(Number),day=new Date(t[0],t[1]-1,t[2]);
   const H=['주문번호','바코드','상품명','옵션','수량','수령자','우편번호','주소'];
-  const R=L.map(({x,q})=>[day,x.smBc||inBc(x)||x.sug||'',x.name,x.smOpt||String(x.opt||'').replace(/ \/ /g,','),q,'','','']);
+  const t0=new Date(),nowV=25569+(t0.getTime()-t0.getTimezoneOffset()*60000)/864e5;
+  const R=L.map(({x,q})=>[day,x.smBc||inBc(x)||x.sug||'',x.name,x.smOpt||String(x.opt||'').replace(/ \/ /g,','),q,'','','',{t:'n',f:'NOW()',v:nowV,z:'m/d/yy h:mm'}]);
   const miss=R.filter(r=>!r[1]).length;
-  const ws=XLSX.utils.aoa_to_sheet([H,...R],{cellDates:true,dateNF:'yyyy-mm-dd'});ws['!cols']=[{wch:10},{wch:20},{wch:50},{wch:18},{wch:8},{wch:10},{wch:10},{wch:30}];
+  const ws=XLSX.utils.aoa_to_sheet([H,...R],{cellDates:true,dateNF:'yyyy-mm-dd'});ws['!cols']=[{wch:10},{wch:20},{wch:50},{wch:18},{wch:8},{wch:10},{wch:10},{wch:30},{wch:15}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'셀메이트 주문등록');XLSX.writeFile(wb,CFG.label+'_도착보장_셀메주문등록_'+no+'.xlsx');
   toast('셀메이트 주문등록 '+R.length+'옵션 내려받음'+(miss?' · 바코드 없는 행 '+miss+'개 확인 필요':''),miss?5000:3000);
 }
@@ -522,6 +534,9 @@ $('#fBase').addEventListener('change',e=>{D.base=e.target.value;saveOpt();render
 $('#fDays').addEventListener('change',e=>{D.days=e.target.value;saveOpt();renderStock();});
 $('#fNeed').addEventListener('change',e=>{D.need=e.target.checked;renderStock();});
 $('#fSale').addEventListener('change',e=>{D.sale=e.target.checked;renderStock();});
+$('#fIn').addEventListener('change',e=>setInOnly(e.target.checked));
+$('#kInC').addEventListener('click',()=>{if(!D.inOnly&&!inRows().length)return toast('아직 적은 입고 수량이 없습니다');setInOnly(!D.inOnly);});
+$('#kInC').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#kInC').click();}});
 $('#sth').addEventListener('click',e=>{const th=e.target.closest('th');if(!th||!th.dataset.k)return;const k=th.dataset.k;if(D.sort===k)D.dir=-D.dir;else{D.sort=k;D.dir=k[0]==='$'||['avail','inc','smAvail','d7','fin'].includes(k)?-1:1;}renderStock();});
 $('#stb').addEventListener('change',e=>{const inp=e.target;if(!inp.closest('td.q')||inp.readOnly||inp.disabled)return;const o=inp.closest('tr').dataset.o,x=D.items.find(y=>String(y.oNo)===o);if(!x)return;const v=Math.max(0,Math.round(+inp.value||0));
   if(!setOptQty(x,v)){inp.value=D.qty[o]||'';return;}D.qty=inQty();inp.value=D.qty[o]||'';inp.closest('td').classList.toggle('has',!!D.qty[o]);renderIn();qtyNote();});
