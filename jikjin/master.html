@@ -67,6 +67,7 @@ td small,td.c1 small{display:block;font-weight:400;color:var(--mut);font-size:11
 .colp .cpb{display:flex;gap:6px;justify-content:flex-end}.colp .cpb .btn{min-height:30px;padding:4px 10px;font-size:12.5px}.colp .cpb [data-a=reset]{margin-right:auto}
 .mm{position:relative;display:inline-flex}.mmp{position:absolute;right:0;top:calc(100% + 4px);z-index:30;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:230px}.mmp[hidden]{display:none}.mmp button{font:inherit;font-size:13px;text-align:left;padding:9px 10px;border:0;border-radius:6px;background:none;cursor:pointer;color:var(--ink);white-space:nowrap}.mmp button:hover{background:#f3f4f6}
 @media(max-width:600px){main{padding:10px 16px}.wrap{max-height:none}}
+.cmline{position:fixed;z-index:70;width:3px;background:var(--acc);border-radius:2px;pointer-events:none;box-shadow:0 0 0 1px #fff}thead th.cmsrc{opacity:.45}body.cmdragging,body.cmdragging *{cursor:grabbing!important;user-select:none!important}
 </style></head><body>
 <div class="ov" id="login"><form class="box" id="loginForm"><h2>상품마스터 대시보드 <span class="tag" id="loginBrand"></span></h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
 <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" autofocus>
@@ -272,6 +273,27 @@ function mRow(x,seq){const sea=x.sea?`<span class="sea ${SEA_CLS[x.sea]||''}">${
 // mTable: "표에서 숨기기"한 기획전도 위에서 고르면 열을 보임. 행은 PAGE 개씩 그리고 아래로 내리면 이어서 그림(표가 가벼워짐)
 function mTable(){const cols=mShowCols(),camps=campList().filter(c=>!c.hide||c.id===MD.campSel),seq=MD.seq=mSeq(cols,camps);const v=MD.view=mFiltered();$('#mth').innerHTML=`<tr><th class="c1 l" data-k="code">${cfBtn("code")}품번<small>상품구분 · 판매상태</small></th><th class="nm l" data-k="name">${cfBtn("name")}상품명<small>업체명 · ${esc(BR.srcLbl)} · 카테고리</small></th>${seq.map(e=>{if(e.camp){const c=e.camp;return `<th class="ci" data-k="camp:${esc(c.id)}" style="--r:${e.r}px" title="${esc(campLbl(c))} · 칸에 10%, 5% 처럼 직접 입력">${cfBtn("camp:"+c.id)}${esc(c.name)}<small>${esc(c.plat)}${c.from?' · '+esc(c.from.slice(5).replace('-','/'))+'~'+esc((c.to||'').slice(5).replace('-','/')):''}</small><b class="cn"></b></th>`;}const c=e.col;return `<th data-k="${c.k}" class="${G_CLS[c.g]||''}${c.t==='text'?' l':''}${e.gf?' gf':''}" title="${esc(c.g)} · ${esc(c.l)}${c.s?' ('+esc(c.s)+')':''}">${cfBtn(c.k)}${esc(c.l)}<small>${esc(c.s||c.g)}</small></th>`;}).join('')}</tr>`;
 MD.shown=Math.min(v.length,PAGE);$('#mtb').innerHTML=v.slice(0,MD.shown).map(x=>mRow(x,seq)).join('')||`<tr><td colspan="${cols.length+camps.length+2}" class="l" style="color:#6b7280">해당하는 품번이 없습니다.</td></tr>`;$('#mWrap').scrollTop=0;$('#mShown').textContent=`${fmt(v.length)} / ${fmt(MD.items.length)} 품번 · 열 ${cols.length+2}${camps.length?' + 기획전 '+camps.length:''}`;document.querySelectorAll('#mth th').forEach(th=>th.classList.toggle('on',th.dataset.k===MD.sort));mMoreUpd();mKpis();cfSummary();hsUpd();}
+// ---- 열 제목 끌어 옮기기 (2026-10-28, 직진 · 도착보장과 같은 동작) ----
+// thDrag(표, 설정): 엑셀처럼 열 제목을 잡고 옆으로 끌면 열을 옮김(6px 넘게 움직여야 끌기, 짧게 누르면 지금처럼 정렬). 끄는 동안 놓일 자리에 파란 세로선
+//   설정 = {movable(th) → 옮길 수 있는 열인지, key(th) → 열 키, drop(옮긴 키, 기준 키, 기준 뒤인지), left/right: 고정 열 선택자(표 가장자리 자동 넘김 기준)}
+function thDrag(tbl,o){
+  tbl.addEventListener('pointerdown',e=>{
+    if(e.button>0||e.pointerType==='touch')return;
+    const th=e.target.closest('thead th');if(!th||!tbl.contains(th)||!o.movable(th))return;
+    if(e.target.closest('button,input,select,a,.cfbtn'))return;
+    const wrap=tbl.closest('.wrap')||tbl.parentNode,x0=e.clientX,y0=e.clientY;let on=false,x=x0,line=null,raf=0,tgt=null;
+    const ths=()=>[...tbl.querySelectorAll('thead th')].filter(t=>o.movable(t));
+    const edge=()=>{const wr=wrap.getBoundingClientRect();let l=wr.left,r=wr.right;if(o.left)tbl.querySelectorAll('thead '+o.left).forEach(t=>{l=Math.max(l,t.getBoundingClientRect().right);});if(o.right)tbl.querySelectorAll('thead '+o.right).forEach(t=>{r=Math.min(r,t.getBoundingClientRect().left);});return {wr,l,r};};
+    const place=()=>{const L=ths(),E=edge();tgt=null;for(const t of L){const b=t.getBoundingClientRect();if(x<b.left+b.width/2){tgt={th:t,after:false,x:b.left};break;}}if(!tgt&&L.length){const t=L[L.length-1];tgt={th:t,after:true,x:t.getBoundingClientRect().right};}if(!tgt)return;const hb=th.closest('thead').getBoundingClientRect();const lx=Math.max(E.l,Math.min(E.r,tgt.x));line.style.left=(lx-1)+'px';line.style.top=Math.max(0,hb.top)+'px';line.style.height=Math.max(20,Math.min(innerHeight,E.wr.bottom)-Math.max(0,hb.top))+'px';};
+    const tick=()=>{const E=edge();let d=0;if(x<E.l+50)d=-Math.ceil((E.l+50-x)/4);else if(x>E.r-50)d=Math.ceil((x-(E.r-50))/4);if(d){wrap.scrollLeft+=Math.max(-24,Math.min(24,d));place();}raf=requestAnimationFrame(tick);};
+    const mv=ev=>{x=ev.clientX;if(!on){if(Math.abs(x-x0)<6||Math.abs(x-x0)<Math.abs(ev.clientY-y0))return;on=true;th.classList.add('cmsrc');document.body.classList.add('cmdragging');line=document.createElement('div');line.className='cmline';document.body.appendChild(line);raf=requestAnimationFrame(tick);}place();};
+    const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);if(!on)return;cancelAnimationFrame(raf);th.classList.remove('cmsrc');document.body.classList.remove('cmdragging');if(line)line.remove();
+      const kill=ev=>{ev.stopPropagation();ev.preventDefault();};window.addEventListener('click',kill,true);setTimeout(()=>window.removeEventListener('click',kill,true),0);
+      if(tgt&&tgt.th!==th)o.drop(o.key(th),o.key(tgt.th),tgt.after);};
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);});
+}
+function cmMove(full,from,to,after){const o=full.filter(k=>k!==from);let i=o.indexOf(to);if(i<0)return full;if(after)i++;o.splice(i,0,from);return o;}
+setTimeout(()=>thDrag($('#mtbl'),{movable:th=>!!th.dataset.k&&th.dataset.k!=='code'&&th.dataset.k!=='name'&&!th.dataset.k.startsWith('camp:'),key:th=>th.dataset.k,left:'.c1,.nm',right:'.ci',drop:(f,t,after)=>{MD.colOrder=cmMove(colsOrdered().map(c=>c.k),f,t,after);colsSave();mTable();if(CPP)colpDraw();}}),0);
 // 표 위 가로 막대: #mWrap 의 가로 스크롤과 같이 움직임. 안쪽 너비 = 막대 너비 + 표가 넘치는 만큼(두 막대의 끝이 같음)
 function hsUpd(){const hs=$('#mHs'),w=$('#mWrap');const over=w.scrollWidth-w.clientWidth;hs.hidden=over<=2;if(hs.hidden)return;hs.firstElementChild.style.width=(hs.clientWidth+over)+'px';if(Math.abs(hs.scrollLeft-w.scrollLeft)>1)hs.scrollLeft=w.scrollLeft;}
 function mMoreUpd(){const n=MD.view.length,bar=$('#mMoreBar');bar.hidden=MD.shown>=n;if(!bar.hidden)$('#mMoreTxt').textContent=`${fmt(MD.shown)} / ${fmt(n)} 품번을 보이는 중 · 표를 아래로 내리면 이어서 보입니다`;}
