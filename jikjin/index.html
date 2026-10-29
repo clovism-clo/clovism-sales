@@ -116,7 +116,7 @@ tr.has td.c1{background:#f5f9ff}tr.has td{background:#fbfdff}
  <div class="ms" id="msSeason" data-title="계절"><button type="button" class="msb"></button><div class="msp" hidden></div></div>
  <div class="ms" id="msYear" data-title="연도"><button type="button" class="msb"></button><div class="msp" hidden></div></div>
  <select id="sort"><option value="default">시트 순서</option><option value="stock">실재고 많은 순</option><option value="sale7">최근 7일 판매 순</option><option value="today">오늘 판매 순</option><option value="month">당월 판매 순</option><option value="need">입고필요 순</option><option value="days">품절까지 순</option><option value="ship">입력 수량 순</option><option value="name">상품명 순</option><option value="reg">등록일 최근 순</option></select>
- <label class="chk" title="관리 대상 = 상품이 판매중·판매 대기중이거나, 직진 재고·입고예정·현장확인중이 있거나, 최근 60일 안에 직진 판매가 있는 품번(그 품번의 옵션 전체). 갱신할 때마다 다시 정합니다"><input type="checkbox" id="master"> 관리 대상만</label>
+ <label class="chk" title="관리 대상 = 상품이 판매중·판매 대기중이거나, 직진 재고·입고예정·현장확인중이 있거나, 최근 90일 안에 직진 판매가 있는 품번(그 품번의 옵션 전체). 갱신할 때마다 다시 정합니다"><input type="checkbox" id="master"> 관리 대상만</label>
  <span class="note" id="shown"></span>
  <button type="button" class="btn sub" id="cfClrJ" hidden></button>
  <button type="button" class="btn sub" id="bView" title="검색 · 조건 · 계절 · 연도 · 정렬을 적용해 지금 표에 보이는 품목만 엑셀로 내려받습니다">필터 결과 엑셀</button>
@@ -128,7 +128,7 @@ tr.has td.c1{background:#f5f9ff}tr.has td{background:#fbfdff}
  <th data-k="days">품절<small>까지(일)</small></th><th data-k="need">입고<small>필요수량</small></th><th data-k="checking">현장<small>확인중</small></th><th data-k="incoming">입고<small>진행중</small></th>
  <th data-k="ship">출고<small>입력</small></th><th data-k="after">들어간 후<small>재고+출고+확인+진행</small></th><th class="zz" data-k="prodNo">지그재그<small>상품번호 · SKU</small></th><th class="zz" data-k="reg">등록일<small>지그재그 상품</small></th>
 </tr></thead><tbody id="tb"></tbody></table></div>
-<p class="note">직진 실재고·판매·입고 현황은 평일 09~19시 매시간, 셀메 가용재고는 2시간마다 갱신됩니다(머리글의 시각 참고). 관리 대상은 상품이 판매중·판매 대기중이거나, 직진 재고·입고예정·현장확인중이 있거나, 최근 60일 안에 직진 판매가 있는 품번이며, 갱신할 때마다 다시 정합니다. 상품마스터(품번별 가격·재고·기획전)는 위의 "상품마스터 ↗" 를 누르면 따로 떼어 낸 페이지에서 열립니다. 출고 입력은 날짜별로 남고, 셀메 등록(.xls) 파일은 입력한 품목만으로 만들어집니다. 직진 업로드(.xlsx)는 '직진 업로드' 탭에 패키징 순서를 넣었으면 그 순서대로, 넣지 않았으면 입력한 품목을 한 패키지로 만듭니다. 열 제목을 누르면 정렬됩니다.</p>
+<p class="note">직진 실재고·판매·입고 현황은 평일 09~19시 매시간, 셀메 가용재고는 2시간마다 갱신됩니다(머리글의 시각 참고). 관리 대상은 상품이 판매중·판매 대기중이거나, 직진 재고·입고예정·현장확인중이 있거나, 최근 90일 안에 직진 판매가 있는 품번이며, 갱신할 때마다 다시 정합니다. 상품마스터(품번별 가격·재고·기획전)는 위의 "상품마스터 ↗" 를 누르면 따로 떼어 낸 페이지에서 열립니다. 출고 입력은 날짜별로 남고, 셀메 등록(.xls) 파일은 입력한 품목만으로 만들어집니다. 직진 업로드(.xlsx)는 '직진 업로드' 탭에 패키징 순서를 넣었으면 그 순서대로, 넣지 않았으면 입력한 품목을 한 패키지로 만듭니다. 열 제목을 누르면 정렬됩니다.</p>
 </section>
 <section id="tabUp" hidden>
 <p class="note">셀메 등록 후 담당자에게 받은 <b>패키징(송장번호) 파일</b>을 불러오거나 이 화면에 끌어다 놓으면, 파일에 적힌 <b>패킹 순서 그대로</b> 패키지명 · 바코드 · 수량이 들어가고 SKU번호 · 상품명 · 옵션 · 시즌이 바로 채워집니다(엑셀 VLOOKUP 처럼). 패키지명은 파일의 '1020(1)' 같은 열을 쓰고, 그 열이 없으면 송장번호마다 (1), (2)… 로 나눕니다. 직접 적을 때는 박스가 바뀌는 줄에만 패키지명을 적으면 아래 줄이 따라가고, 바코드에서 Enter 를 누르면 수량으로, 수량에서 Enter 를 누르면 다음 줄로 넘어갑니다. 엑셀에서 여러 칸을 복사해 붙여 넣어도 됩니다(패키징 파일의 행을 통째로 붙여 넣으면 바코드 · 수량 · 패키지 열을 알아서 찾습니다). 목록은 출고 일자별로 저장되고 [저장] 을 누르면 GitHub 에도 올라갑니다.</p>
@@ -152,7 +152,7 @@ tr.has td.c1{background:#f5f9ff}tr.has td{background:#fbfdff}
 <div class="bar">
  <select id="bestBy"><option value="qty7">최근 7일 판매수량 순</option><option value="amt7">최근 7일 판매금액 순</option><option value="qtyM">당월 판매수량 순</option><option value="amtM">당월 판매금액 순</option><option value="qtyToday">오늘 판매수량 순</option></select>
  <input type="search" id="bestQ" placeholder="상품명 · 품번 검색" autocomplete="off">
- <label class="chk" title="관리 대상 = 상품이 판매중·판매 대기중이거나, 직진 재고·입고예정·현장확인중이 있거나, 최근 60일 안에 직진 판매가 있는 품번(그 품번의 옵션 전체). 갱신할 때마다 다시 정합니다"><input type="checkbox" id="bestMaster"> 관리 대상만</label>
+ <label class="chk" title="관리 대상 = 상품이 판매중·판매 대기중이거나, 직진 재고·입고예정·현장확인중이 있거나, 최근 90일 안에 직진 판매가 있는 품번(그 품번의 옵션 전체). 갱신할 때마다 다시 정합니다"><input type="checkbox" id="bestMaster"> 관리 대상만</label>
  <select id="bestN"><option value="30">30개</option><option value="50">50개</option><option value="100">100개</option><option value="9999">전부</option></select>
  <span class="note" id="bestShown"></span>
 </div>
