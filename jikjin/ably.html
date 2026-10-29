@@ -74,7 +74,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
 .colp .cpl{overflow:auto;max-height:min(58vh,520px);border:1px solid var(--line);border-radius:8px;margin:8px 0}.colp .cpr{display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid #f3f4f6;background:#fff;user-select:none}.colp .cpr:last-child{border-bottom:0}.colp .cpr .hd{cursor:grab;color:#9ca3af;font-size:15px;padding:2px 6px;touch-action:none;border-radius:4px}.colp .cpr .hd:hover{background:#f3f4f6;color:#374151}.colp .cpr input{width:16px;height:16px;margin:0;cursor:pointer}.colp .cpr .v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.colp .cpr small{font-size:11px;color:var(--mut);white-space:nowrap}.colp .cpr.off .v{color:#9ca3af;text-decoration:line-through}.colp .cpr.gh .v{color:#9ca3af}.colp .cpr.drag{background:#eef2ff;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;z-index:1}.colp .cpr.drag .hd{cursor:grabbing}.colp.dragging{cursor:grabbing}
 .colp .cpb{display:flex;gap:6px;justify-content:flex-end}.colp .cpb .btn{min-height:30px;padding:4px 10px;font-size:12.5px}.colp .cpb [data-a=reset]{margin-right:auto}
 .cmline{position:fixed;z-index:70;width:3px;background:var(--acc);border-radius:2px;pointer-events:none;box-shadow:0 0 0 1px #fff}thead th.cmsrc{opacity:.45}body.cmdragging,body.cmdragging *{cursor:grabbing!important;user-select:none!important}
-.newb{display:inline-block;background:#dc2626;color:#fff;border-radius:4px;padding:0 5px;font-size:10.5px;font-weight:700;margin-right:5px;vertical-align:1px;letter-spacing:.2px}tr.isnew td{background:#fff7ed}
+.newb{display:inline-block;background:#dc2626;color:#fff;border-radius:4px;padding:0 5px;font-size:10.5px;font-weight:700;margin-right:5px;vertical-align:1px;letter-spacing:.2px}tr.isnew td,tr.isnew td.c1{background:#fff7ed}#ctbl td.sm{background:#ecfdf5;font-weight:700;color:#047857}#canTh{width:64px;font:inherit;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px}
 </style></head><body>
 <div class="ov" id="login"><form class="box" id="loginForm"><h2>에이블리 도착보장 대시보드 <span class="tag" id="loginBrand"></span></h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
 <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" autofocus>
@@ -89,7 +89,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
  <div class="card clk" id="kInC" role="button" tabindex="0" title="누르면 재고 · 입고 탭에서 입고 수량을 적은 옵션만 보입니다 (다시 누르면 해제)"><div class="t">입고 입력 <small>입고신청 목록 전체</small></div><div class="n" id="kIn">-</div><div class="s" id="kInS"></div></div>
  <div class="card" id="kIssueC"><div class="t">세팅 확인 필요</div><div class="n" id="kIssue">-</div><div class="s" id="kIssueS"></div></div>
 </div>
-<div class="tabs" role="tablist"><button type="button" data-tab="set" role="tab">세팅 점검<span class="c" id="tcSet">0</span></button><button type="button" data-tab="stock" role="tab">재고 · 입고<span class="c" id="tcStock">0</span></button><button type="button" data-tab="in" role="tab">입고신청<span class="c" id="tcIn">0</span></button></div>
+<div class="tabs" role="tablist"><button type="button" data-tab="set" role="tab">세팅 점검<span class="c" id="tcSet">0</span></button><button type="button" data-tab="stock" role="tab">재고 · 입고<span class="c" id="tcStock">0</span></button><button type="button" data-tab="can" role="tab">입고 가능<span class="c" id="tcCan">0</span></button><button type="button" data-tab="in" role="tab">입고신청<span class="c" id="tcIn">0</span></button></div>
 
 <section id="tabSet">
  <p class="note">도착보장은 상품 수정 화면에서 옵션마다 <b>도착보장 스위치를 켜고 솔루션사 코드(바코드)를 넣어야</b> 재고 목록에 올라옵니다. 입고 바코드는 에이블리 상품 목록의 <b>솔루션사 고유코드</b>이고, 그것이 없을 때만 3PL 상품 바코드(입고 이력이 생기면 채워짐)를 씁니다. 아래는 그 세팅에서 손볼 곳입니다. '넣을 바코드'는 셀메이트에 있는 솔루션사 코드이거나, 품번과 옵션으로 셀메이트에서 찾은 바코드입니다. 수정 화면에서 고친 뒤 <b>에이블리마스터_업데이트.cmd</b> 를 실행하면 바로 다시 점검합니다(평소에는 매시간 자동 갱신).</p>
@@ -122,6 +122,22 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
  </div>
  <div class="wrap"><table id="stbl"><thead id="sth"></thead><tbody id="stb"></tbody></table></div>
  <p class="note" id="stNote"></p>
+</section>
+
+<section id="tabCan" hidden>
+ <p class="note">셀메이트 가용재고가 기준 수량 이상인 도착보장 옵션만 모았습니다. 셀메이트 창고에 재고가 넉넉해서 에이블리로 입고를 보낼 수 있는 옵션들입니다. 매시간 자동 갱신 때마다 새 재고로 다시 계산하므로 따로 손댈 필요가 없습니다.</p>
+ <div class="bar">
+  <label>셀메 가용재고 <input type="number" id="canTh" min="1" step="1"> 개 이상</label>
+  <input type="search" id="canQ" placeholder="품번 · 상품명 · 옵션 · 바코드 검색" autocomplete="off">
+  <select id="canSort" title="정렬"><option value="sm">셀메 가용재고 많은 순</option><option value="rec">권장 입고 많은 순</option><option value="left">남은 일수 적은 순</option><option value="d7">최근 7일 판매 많은 순</option><option value="avail">판매 가능 적은 순</option><option value="name">상품명 순</option></select>
+  <label class="chk"><input type="checkbox" id="canNot"> 입고 목록에 아직 없는 것만</label>
+  <span class="note" id="canShown" style="margin:0"></span>
+  <button type="button" class="btn sub" id="canAdd" title="이 탭에 보이는 옵션 중 권장 입고가 있고 아직 입고 목록에 없는 옵션을 입고신청 탭 목록 끝에 더합니다 (수량 = 권장 입고와 보낼 수 있음 중 작은 값)">권장 수량을 입고 목록에 추가</button>
+  <button type="button" class="btn sub" id="canXls">엑셀</button>
+  <button type="button" class="btn sub cmb" id="cmC" title="열 순서를 바꾸거나 열을 숨깁니다. 표의 열 제목을 잡고 옆으로 끌어도 옮겨집니다">열 설정</button>
+ </div>
+ <div class="wrap"><table id="ctbl"><thead id="cth"></thead><tbody id="ctb"></tbody></table></div>
+ <p class="note" id="canNote"></p>
 </section>
 
 <section id="tabIn" hidden>
@@ -275,7 +291,7 @@ function kpi(){
   $('#kIssueS').textContent='켜지 않은 진열 옵션 '+fmt(m)+'개';
   const tc=$('#tcSet');tc.textContent=n;tc.classList.toggle('bad',n>0);
 }
-function setTab(t){if(!['set','stock','in'].includes(t))t='set';D.tab=t;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));$('#tabSet').hidden=t!=='set';$('#tabStock').hidden=t!=='stock';$('#tabIn').hidden=t!=='in';if(t==='stock'&&D.doc)renderStock();saveOpt();}
+function setTab(t){if(!['set','stock','can','in'].includes(t))t='set';D.tab=t;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));$('#tabSet').hidden=t!=='set';$('#tabStock').hidden=t!=='stock';$('#tabIn').hidden=t!=='in';$('#tabCan').hidden=t!=='can';if(t==='stock'&&D.doc)renderStock();if(t==='can'&&D.doc)renderCan();saveOpt();}
 function saveOpt(){ls(LSO,JSON.stringify({base:D.base,days:D.days,tab:D.tab}));}
 function copyBtn(v){return v?'<button type="button" class="copy" data-copy="'+esc(v)+'" title="복사">복사</button>':'';}
 
@@ -509,8 +525,49 @@ function renderStock(){
    +'<td>'+(c.can==null?'-':c.can<c.rec?'<span class="warm">'+fmt(c.can)+'</span>':fmt(c.can))+'</td>'
    +'<td>'+fmt(x.fin)+'</td><td class="l mono">'+esc(x.oNo)+'</td><td class="l">'+(x.added?esc(addedTxt(x)):'<span class="zero" title="기록 시작('+esc(D.doc.seenSince||'-')+') 전부터 있던 옵션">이전</span>')+'</td></tr>';}).join(''));
   $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다. NEW 는 최근 7일 안에 도착보장 재고 목록에 처음 잡힌 옵션이고 기본 정렬에서 맨 위에 둡니다. 추가일은 자동 갱신이 그 옵션을 처음 본 시각이라 실제로 켠 시각보다 최대 한 시간 늦을 수 있고, 기록 시작('+esc(D.doc.seenSince||'-')+') 전부터 있던 옵션은 이전으로 표시합니다.';
-  qtyNote();
+  qtyNote();renderCan();
 }
+// ---- 입고 가능 탭 (2026-10-29): 셀메이트 가용재고가 기준(기본 10개) 이상인 도착보장 옵션 ----
+const CN={th:10,q:'',sort:'sm',not:false};{const v=+ls('clv_ab_canth_'+BRAND);if(v>0)CN.th=v;}
+const CMC=CMX('abc',{btn:'#cmC',table:'#ctbl',title:()=>'입고 가능',onChange:()=>renderCan()});
+const canOk=x=>x.smAvail!=null&&+x.smAvail>=CN.th;
+function canView(){const q=CN.q.trim().toLowerCase();
+  let V=D.items.filter(canOk).map(x=>({x,c:calc(x)}));
+  if(q)V=V.filter(({x})=>[x.code,x.name,x.opt,x.bc,x.sol,x.ibc,x.oNo].some(v=>v&&String(v).toLowerCase().includes(q)));
+  if(CN.not)V=V.filter(({x})=>!(+(D.qty||{})[x.oNo]>0));
+  const L=it=>it.c.left==null?1e9:it.c.left;
+  const S={sm:(a,b)=>b.x.smAvail-a.x.smAvail,rec:(a,b)=>(b.c.rec||0)-(a.c.rec||0),left:(a,b)=>L(a)-L(b),d7:(a,b)=>(b.x.s7||0)-(a.x.s7||0),avail:(a,b)=>(a.x.avail||0)-(b.x.avail||0),name:(a,b)=>String(a.x.name||'').localeCompare(String(b.x.name||''),'ko')||String(a.x.opt||'').localeCompare(String(b.x.opt||''),'ko')};
+  V.sort((a,b)=>(S[CN.sort]||S.sm)(a,b)||(b.x.smAvail-a.x.smAvail));return V;}
+const CCOLS=[['code','품번','c1 l'],['name','상품명 · 옵션','l'],['bc','바코드','l','솔루션사 코드'],['st','재고 상태','l'],['sm','셀메 가용재고','','셀메이트'],['can','보낼 수 있음','','셀메 창고 − 미발송'],['avail','판매 가능','','에이블리'],['inc','입고 예정'],['d7','최근 7일','','판매 합계'],['left','남은 일수'],['rec','권장 입고','','목표 일수 기준'],['qty','입고 수량','','입고 목록']];
+const CSORT={sm:'sm',rec:'rec',left:'left',d7:'d7',avail:'avail',name:'name'};
+function renderCan(){if(!D.items||!$('#tcCan'))return;$('#tcCan').textContent=fmt(D.items.filter(canOk).length);
+  if(D.tab!=='can')return;
+  const V=canView();
+  $('#cth').innerHTML=CMC.head('<tr>'+CCOLS.map(([k,l,c,sub])=>'<th class="'+(c||'')+(CSORT[k]===CN.sort?' on':'')+'" data-k="'+k+'">'+esc(l)+(CSORT[k]===CN.sort?(k==='left'||k==='avail'||k==='name'?' ▲':' ▼'):'')+(sub?'<small>'+esc(sub)+'</small>':'')+'</th>').join('')+'</tr>');
+  $('#ctb').innerHTML=CMC.rows(V.map(({x,c})=>{const nw=isNew(x),q=+(D.qty||{})[x.oNo]||0;const leftCls=c.left==null?'zero':c.left<=3?'hot':c.left<=6?'warm':'';const stCls='st-'+String(x.st||'').split(' ')[0];
+   return '<tr'+(nw?' class="isnew"':'')+'><td class="c1 l"><b class="mono">'+esc(x.code||'-')+'</b></td>'
+   +'<td class="nm">'+(nw?'<span class="newb" title="'+esc(x.added)+' 에 처음 확인한 옵션">NEW '+esc(addedTxt(x).slice(0,5))+'</span>':'')+esc(x.name)+'<small>'+esc(x.opt)+'</small></td>'
+   +'<td class="l mono">'+(inBc(x)?esc(inBc(x)):'<span class="zero">-</span>')+'</td>'
+   +'<td class="l '+stCls+'">'+esc(x.st||'-')+'</td>'
+   +'<td class="sm">'+fmt(x.smAvail)+'</td>'
+   +'<td>'+(c.can==null?'-':fmt(c.can))+'</td>'
+   +'<td>'+(x.avail?fmt(x.avail):'<span class="zero">0</span>')+'</td><td>'+(x.inc?fmt(x.inc):'<span class="zero">0</span>')+'</td>'
+   +'<td>'+fmt(x.s7||0)+'</td>'
+   +'<td class="'+leftCls+'">'+(c.left==null?'-':fmt1(c.left)+'일')+'</td>'
+   +'<td>'+(c.rec?'<b>'+fmt(c.rec)+'</b>':'<span class="zero">0</span>')+'</td>'
+   +'<td>'+(q?'<b>'+fmt(q)+'</b>':'<span class="zero">-</span>')+'</td></tr>';}).join('')||'<tr><td colspan="12" class="l zero">조건에 맞는 옵션이 없습니다</td></tr>');
+  const tot=D.items.filter(canOk).length,sum=V.reduce((a,{x})=>a+(+x.smAvail||0),0);
+  $('#canShown').textContent=fmt(V.length)+' / '+fmt(tot)+' 옵션 · 셀메 가용재고 합 '+fmt(sum);
+  const F=D.doc.files||{},smt=F.sellmate_stock&&F.sellmate_stock.time;
+  $('#canNote').innerHTML='도착보장 옵션 '+fmt(D.items.length)+'개 중 셀메이트 가용재고가 '+fmt(CN.th)+'개 이상인 옵션 '+fmt(tot)+'개입니다'+(smt?' (셀메 재고 '+esc(smt)+' 기준)':'')+'. 셀메 가용재고는 셀메이트 화면의 가용재고이고, 보낼 수 있음은 SJ_기본창고 재고에서 미발송 주문을 뺀 수량이라 더 적을 수 있습니다. 입고 수량은 입고신청 탭 목록에 적힌 수량입니다. 기준 수량은 이 브라우저에 기억됩니다.';
+}
+async function dlCan(){const V=canView();if(!V.length)return toast('표에 보이는 옵션이 없습니다');await loadXLSX();
+  const H=['품번','상품명','옵션','바코드','재고 상태','셀메 가용재고','보낼 수 있음','판매 가능','입고 예정','최근 7일','남은 일수','권장 입고','입고 수량','추가일','옵션 번호'];
+  const n=v=>v==null||v===''||isNaN(v)?'':+v;
+  const R=V.map(({x,c})=>[x.code||'',x.name||'',x.opt||'',inBc(x)||'',x.st||'',n(x.smAvail),n(c.can),n(x.avail),n(x.inc),n(x.s7),c.left==null?'':Math.round(c.left*10)/10,n(c.rec),+(D.qty||{})[x.oNo]||'',x.added||'',x.oNo||'']);
+  const ws=XLSX.utils.aoa_to_sheet([H].concat(R));ws['!cols']=[14,40,22,16,10,10,10,8,8,8,8,8,8,16,12].map(w=>({wch:w}));ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R.length,c:H.length-1}})};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'입고 가능');
+  const t=new Date(),hm=String(t.getHours()).padStart(2,'0')+String(t.getMinutes()).padStart(2,'0');XLSX.writeFile(wb,todayKst().replace(/-/g,'')+'_'+CFG.label+'_도착보장_입고가능_셀메'+CN.th+'이상_'+V.length+'옵션_'+hm+'.xlsx');toast('입고 가능 '+fmt(V.length)+'옵션을 엑셀로 내려받았습니다');}
 // 재고 탭 입고 수량 칸 = 입고신청 목록에서 이 옵션 줄의 수량. 적으면 목록 줄을 고치거나 끝에 더함
 function optLines(o){const I=[];E.lines.forEach((l,i)=>{const h=look(l[1]);if(h&&h.length===1&&h[0].oNo===o)I.push(i);});return I;}
 function qtyCell(x,q){const I=optLines(x.oNo),multi=I.length>1;
@@ -670,6 +727,14 @@ document.addEventListener('click',e=>{if(!e.target.closest('.ms'))document.query
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ms .msp').forEach(p=>p.hidden=true);});
 $('#kInC').addEventListener('click',()=>{if(!D.inOnly&&!inRows().length)return toast('아직 적은 입고 수량이 없습니다');setInOnly(!D.inOnly);});
 $('#kInC').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#kInC').click();}});
+$('#canTh').value=CN.th;
+$('#canTh').addEventListener('change',e=>{const v=Math.max(1,Math.round(+e.target.value||0));CN.th=v||10;e.target.value=CN.th;ls('clv_ab_canth_'+BRAND,String(CN.th));renderCan();});
+$('#canQ').addEventListener('input',e=>{CN.q=e.target.value;renderCan();});
+$('#canSort').addEventListener('change',e=>{CN.sort=e.target.value;renderCan();});
+$('#canNot').addEventListener('change',e=>{CN.not=e.target.checked;renderCan();});
+$('#canXls').addEventListener('click',()=>dlCan());
+$('#cth').addEventListener('click',e=>{const th=e.target.closest('th');if(!th)return;const m=CSORT[th.dataset.k];if(m){CN.sort=m;$('#canSort').value=m;renderCan();}});
+$('#canAdd').addEventListener('click',()=>{const have=new Set(inRows().map(r=>r.x.oNo));let n=0;canView().forEach(({x,c})=>{if(c.send>0&&!have.has(x.oNo)&&inBc(x)){E.lines.push(['',inBc(x),c.send]);n++;}});if(!n)return toast('입고 목록에 더할 권장 입고가 없습니다');touch();renderIn();renderStock();toast('입고신청 탭 목록 끝에 '+n+'줄 추가했습니다',3000);});
 $('#sth').addEventListener('click',e=>{const th=e.target.closest('th');if(!th||!th.dataset.k)return;const k=th.dataset.k;if(D.sort===k)D.dir=-D.dir;else{D.sort=k;D.dir=k[0]==='$'||['avail','inc','smAvail','d7','fin'].includes(k)?-1:1;}renderStock();});
 $('#stb').addEventListener('change',e=>{const inp=e.target;if(!inp.closest('td.q')||inp.readOnly||inp.disabled)return;const o=inp.closest('tr').dataset.o,x=D.items.find(y=>String(y.oNo)===o);if(!x)return;const v=Math.max(0,Math.round(+inp.value||0));
   if(!setOptQty(x,v)){inp.value=D.qty[o]||'';return;}D.qty=inQty();inp.value=D.qty[o]||'';inp.closest('td').classList.toggle('has',!!D.qty[o]);renderIn();qtyNote();});
