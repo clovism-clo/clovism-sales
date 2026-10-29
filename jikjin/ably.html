@@ -74,6 +74,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
 .colp .cpl{overflow:auto;max-height:min(58vh,520px);border:1px solid var(--line);border-radius:8px;margin:8px 0}.colp .cpr{display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid #f3f4f6;background:#fff;user-select:none}.colp .cpr:last-child{border-bottom:0}.colp .cpr .hd{cursor:grab;color:#9ca3af;font-size:15px;padding:2px 6px;touch-action:none;border-radius:4px}.colp .cpr .hd:hover{background:#f3f4f6;color:#374151}.colp .cpr input{width:16px;height:16px;margin:0;cursor:pointer}.colp .cpr .v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.colp .cpr small{font-size:11px;color:var(--mut);white-space:nowrap}.colp .cpr.off .v{color:#9ca3af;text-decoration:line-through}.colp .cpr.gh .v{color:#9ca3af}.colp .cpr.drag{background:#eef2ff;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;z-index:1}.colp .cpr.drag .hd{cursor:grabbing}.colp.dragging{cursor:grabbing}
 .colp .cpb{display:flex;gap:6px;justify-content:flex-end}.colp .cpb .btn{min-height:30px;padding:4px 10px;font-size:12.5px}.colp .cpb [data-a=reset]{margin-right:auto}
 .cmline{position:fixed;z-index:70;width:3px;background:var(--acc);border-radius:2px;pointer-events:none;box-shadow:0 0 0 1px #fff}thead th.cmsrc{opacity:.45}body.cmdragging,body.cmdragging *{cursor:grabbing!important;user-select:none!important}
+.newb{display:inline-block;background:#dc2626;color:#fff;border-radius:4px;padding:0 5px;font-size:10.5px;font-weight:700;margin-right:5px;vertical-align:1px;letter-spacing:.2px}tr.isnew td{background:#fff7ed}
 </style></head><body>
 <div class="ov" id="login"><form class="box" id="loginForm"><h2>에이블리 도착보장 대시보드 <span class="tag" id="loginBrand"></span></h2><p>매출보고 페이지와 같은 비밀번호를 입력하면 자료가 열립니다.</p>
 <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" autofocus>
@@ -105,7 +106,7 @@ td.q input{width:68px;text-align:right;font:inherit;font-size:13px;padding:4px 6
   <div class="ms" id="msFilter" data-title="조건"><button type="button" class="msb"></button><div class="msp" hidden></div></div>
   <div class="ms" id="msSeason" data-title="계절"><button type="button" class="msb"></button><div class="msp" hidden></div></div>
   <div class="ms" id="msYear" data-title="연도"><button type="button" class="msb"></button><div class="msp" hidden></div></div>
-  <select id="fSort" title="정렬"><option value="">남은 일수 적은 순 (기본)</option><option value="$rec">권장 입고 많은 순</option><option value="d7">최근 7일 판매 많은 순</option><option value="$s">기간 판매 많은 순</option><option value="avail">판매 가능 많은 순</option><option value="$qty">입고 수량 많은 순</option><option value="name">상품명 순</option><option value="code">품번 순</option></select>
+  <select id="fSort" title="정렬"><option value="">NEW 먼저 · 남은 일수 적은 순 (기본)</option><option value="added">추가일 최근 순</option><option value="$rec">권장 입고 많은 순</option><option value="d7">최근 7일 판매 많은 순</option><option value="$s">기간 판매 많은 순</option><option value="avail">판매 가능 많은 순</option><option value="$qty">입고 수량 많은 순</option><option value="name">상품명 순</option><option value="code">품번 순</option></select>
   <label>판매 기준 <select id="fBase"><option value="7">최근 7일 평균</option><option value="14">최근 14일 평균</option><option value="30">최근 30일 평균</option></select></label>
   <label>목표 <select id="fDays"><option value="6">6일분 (기본)</option><option value="10">10일분 (설 연휴)</option><option value="14">14일분</option></select></label>
   <span class="note" id="aShown" style="margin:0"></span>
@@ -164,6 +165,10 @@ const fmt1=n=>n==null||isNaN(n)?'-':(Math.round(n*10)/10).toLocaleString('ko-KR'
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){return null;}}
 let toastT;function toast(m,ms){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||2200);}
 function todayKst(){return new Date(Date.now()+9*3600e3).toISOString().slice(0,10);}
+// 새 옵션: 자동 갱신이 처음 본 시각(added)이 최근 7일 안이면 NEW
+function newCut(){const [y,m,d]=todayKst().split('-').map(Number);return new Date(Date.UTC(y,m-1,d-6)).toISOString().slice(0,10);}
+function isNew(x){return !!(x.added&&x.added.slice(0,10)>=newCut());}
+function addedTxt(x){return x.added?x.added.slice(5,10).replace('-','/')+' '+x.added.slice(11,16):'';}
 
 // 암호화: 매출보고·직진 대시보드와 같은 방식 (PBKDF2-SHA256 300,000회 + AES-256-GCM, salt16 + iv12 + 암호문)
 async function key(pw,salt){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:300000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
@@ -323,7 +328,8 @@ const COLS=[
  {k:'$rec',l:'권장 입고',s:'목표 일수 기준',v:(x,c)=>c.rec},
  {k:'$can',l:'보낼 수 있음',s:'셀메 창고 − 미발송',v:(x,c)=>c.can},
  {k:'fin',l:'최종 판매가',s:'에이블리 앱',v:x=>x.fin},
- {k:'oNo',l:'옵션 번호',c:'l',v:x=>x.oNo}];
+ {k:'oNo',l:'옵션 번호',c:'l',v:x=>x.oNo},
+ {k:'added',l:'추가일',s:'처음 확인',c:'l',v:x=>x.added||''}];
 // ---- 엑셀식 열 필터 (2026-10-22, 직진·도착보장 공용): CFX(이름, {f:{키:{l,get,num,pct}}, rows(skip), apply(), sort(키,오름차순)|null, sortable(키), clr:'#해제단추'}) ----
 const CFR={};let CFP=null;
 function cfClose(){if(CFP){CFP.remove();CFP=null;}}
@@ -363,7 +369,7 @@ function cfOpen(I,keys,btn){cfClose();const o=I.o;let k=keys.find(x=>I.st[x])||k
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.cfbtn[data-cf]');if(b){e.stopPropagation();e.preventDefault();if(CFP&&CFP.dataset.b===b.dataset.cf+'|'+b.dataset.keys)return cfClose();const I=CFR[b.dataset.cf];if(I)cfOpen(I,b.dataset.keys.split(','),b);return;}if(CFP&&!e.composedPath().includes(CFP))cfClose();},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&CFP)cfClose();});document.addEventListener('scroll',e=>{if(CFP&&!CFP.contains(e.target))cfClose();},true);window.addEventListener('resize',()=>cfClose());
 // 재고 표 열 필터 (행 = {x: 옵션, c: 계산값})
-const ATXT=['code','name','opt','gOpen','bc','st','oNo','issue'];
+const ATXT=['code','name','opt','gOpen','bc','st','oNo','issue','added'];
 const ACF=CFX('ab',{f:Object.assign(Object.fromEntries(COLS.map(c=>[c.k,{l:c.l,num:!ATXT.includes(c.k),get:it=>c.v(it.x,it.c)}])),{opt:{l:'옵션',get:it=>it.x.opt||''},gOpen:{l:'진열',get:it=>it.x.gOpen||''},issue:{l:'점검',get:it=>it.x.issue&&ISSUE[it.x.issue]?ISSUE[it.x.issue][0]:''},d7:{l:'최근 7일 합',num:1,get:it=>+it.x.s7||0},$left:{l:'남은 일수',num:1,get:it=>it.c.left==null?null:Math.round(it.c.left*10)/10},$avg:{l:'일평균',num:1,get:it=>it.c.avg==null?null:Math.round(it.c.avg*100)/100}}),
  rows:k=>view(k,true),apply:()=>renderStock(),clr:'#cfClrA',sort:(k,asc)=>{D.sort=k;D.dir=asc?1:-1;renderStock();},sortable:k=>COLS.some(c=>c.k===k)});
 const AMAP={code:['code','issue'],name:['name','opt','gOpen']};COLS.forEach(c=>{if(!AMAP[c.k])AMAP[c.k]=[c.k];});
@@ -454,7 +460,7 @@ function msInit(id,opts,set,onChange){const el=$('#'+id),pan=el.querySelector('.
 function msLabel(id){const {el,opts,set}=MS[id];const btn=el.querySelector('.msb'),t=el.dataset.title;const names=opts.filter(([k])=>set.has(k)).map(([,l])=>l.replace(/ \(.*\)$/,''));btn.innerHTML=set.size?`${esc(t)}: <b>${esc(names.join(' + '))}</b>`:`${esc(t)}: 전체`;btn.title=set.size?names.join(' + '):t+' 전체';el.classList.toggle('sel',set.size>0);el.querySelectorAll('.msp label').forEach(l=>{const c=l.querySelector('input');c.checked=set.has(c.value);l.classList.toggle('on',c.checked);});}
 function msSet(id,keys){const m=MS[id];m.set.clear();(keys||[]).forEach(k=>m.set.add(k));msLabel(id);}
 // 조건: 재고 상태끼리는 "또는", 나머지는 모두 만족하는 것만
-const AFL=[['need','입고 필요 (권장 입고 > 0)'],['sale','최근 7일 팔린 것'],['in','입고 수량 적은 것'],['soon','남은 일수 3일 이하'],['avail0','판매 가능 0'],['issue','세팅 점검 필요'],['nobc','입고 바코드 없음']];
+const AFL=[['need','입고 필요 (권장 입고 > 0)'],['sale','최근 7일 팔린 것'],['in','입고 수량 적은 것'],['soon','남은 일수 3일 이하'],['avail0','판매 가능 0'],['issue','세팅 점검 필요'],['nobc','입고 바코드 없음'],['new','최근 7일 추가 (NEW)']];
 function aOpts(){const ST=['정상','품절 임박','품절','미입고 품절'],sts=new Set(),ss=new Set(),ys=new Set();D.items.forEach(x=>{if(x.st)sts.add(x.st);if(x.sea)ss.add(x.sea);if(x.yr)ys.add(x.yr);});
   const stl=[...sts].sort((a,b)=>(ST.indexOf(a)+1||99)-(ST.indexOf(b)+1||99)).map(v=>['st:'+v,'재고 상태: '+v]);
   const order=['봄','여름','가을','겨울','사계절'],sl=[...ss].sort((a,b)=>(order.indexOf(a)+1||99)-(order.indexOf(b)+1||99)||a.localeCompare(b,'ko'));
@@ -474,11 +480,12 @@ function view(skip,nosort){
   if(C.has('avail0'))V=V.filter(({x})=>!(+x.avail>0));
   if(C.has('issue'))V=V.filter(({x})=>!!x.issue);
   if(C.has('nobc'))V=V.filter(({x})=>!inBc(x));
+  if(C.has('new'))V=V.filter(({x})=>isNew(x));
   if(D.seas.size)V=V.filter(({x})=>D.seas.has(x.sea||''));
   if(D.yrs.size)V=V.filter(({x})=>D.yrs.has(x.yr||''));
   V=V.filter(it=>ACF.pass(it,skip));if(nosort)return V;
   if(D.sort){const col=COLS.find(c=>c.k===D.sort);V.sort((a,b)=>{const va=col.v(a.x,a.c),vb=col.v(b.x,b.c);if(typeof va==='number'||typeof vb==='number')return ((va==null?-1e12:va)-(vb==null?-1e12:vb))*D.dir;return String(va==null?'':va).localeCompare(String(vb==null?'':vb),'ko')*D.dir;});}
-  else V.sort((a,b)=>(a.c.left==null?1e9:a.c.left)-(b.c.left==null?1e9:b.c.left)||(b.x.s7-a.x.s7));
+  else V.sort((a,b)=>{const na=isNew(a.x),nb=isNew(b.x);if(na!==nb)return na?-1:1;if(na)return String(b.x.added).localeCompare(String(a.x.added))||String(a.x.oNo).localeCompare(String(b.x.oNo));return (a.c.left==null?1e9:a.c.left)-(b.c.left==null?1e9:b.c.left)||(b.x.s7-a.x.s7);});
   return V;
 }
 function renderStock(){
@@ -488,8 +495,8 @@ function renderStock(){
   $('#aShown').textContent=fmt(V.length)+' / '+fmt(D.items.length)+' 옵션';const so=$('#fSort');if(so)so.value=[...so.options].some(o=>o.value===D.sort)?D.sort:'';
   $('#tcStock').textContent=D.items.filter(x=>calc(x).rec>0).length;
   $('#stb').innerHTML=CMA.rows(V.map(({x,c})=>{const q=D.qty[x.oNo];const leftCls=c.left==null?'zero':c.left<=3?'hot':c.left<=6?'warm':'';const stCls='st-'+String(x.st||'').split(' ')[0];
-   return '<tr data-o="'+esc(x.oNo)+'"><td class="c1 l"><b class="mono">'+esc(x.code||'-')+'</b>'+(x.issue?'<small><span class="badge '+ISSUE[x.issue][1]+'">'+ISSUE[x.issue][0]+'</span></small>':'')+'</td>'
-   +'<td class="nm">'+esc(x.name)+'<small>'+esc(x.opt)+(x.gOpen==='미진열'?' · 상품 미진열':'')+'</small></td>'
+   const nw=isNew(x);return '<tr data-o="'+esc(x.oNo)+'"'+(nw?' class="isnew"':'')+'><td class="c1 l"><b class="mono">'+esc(x.code||'-')+'</b>'+(x.issue?'<small><span class="badge '+ISSUE[x.issue][1]+'">'+ISSUE[x.issue][0]+'</span></small>':'')+'</td>'
+   +'<td class="nm">'+(nw?'<span class="newb" title="'+esc(x.added)+' 에 처음 확인한 옵션">NEW '+esc(addedTxt(x).slice(0,5))+'</span>':'')+esc(x.name)+'<small>'+esc(x.opt)+(x.gOpen==='미진열'?' · 상품 미진열':'')+'</small></td>'
    +'<td class="l mono">'+(inBc(x)?esc(inBc(x)):'<span class="zero">-</span>')+(x.bc&&inBc(x)!==String(x.bc)?'<small>3PL '+esc(x.bc)+'</small>':'')+'</td>'
    +'<td class="l '+stCls+'">'+esc(x.st||'-')+'</td>'
    +'<td>'+fmt(x.avail)+'</td><td>'+(x.inc?fmt(x.inc):'<span class="zero">0</span>')+'</td>'
@@ -500,8 +507,8 @@ function renderStock(){
    +'<td class="'+leftCls+'">'+(c.left==null?'-':fmt1(c.left)+'일')+'</td>'
    +'<td>'+(c.rec?'<b>'+fmt(c.rec)+'</b>':'<span class="zero">0</span>')+'</td>'
    +'<td>'+(c.can==null?'-':c.can<c.rec?'<span class="warm">'+fmt(c.can)+'</span>':fmt(c.can))+'</td>'
-   +'<td>'+fmt(x.fin)+'</td><td class="l mono">'+esc(x.oNo)+'</td></tr>';}).join(''));
-  $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다.';
+   +'<td>'+fmt(x.fin)+'</td><td class="l mono">'+esc(x.oNo)+'</td><td class="l">'+(x.added?esc(addedTxt(x)):'<span class="zero" title="기록 시작('+esc(D.doc.seenSince||'-')+') 전부터 있던 옵션">이전</span>')+'</td></tr>';}).join(''));
+  $('#stNote').innerHTML='표 '+fmt(V.length)+'개 옵션. 남은 일수 3일 이하는 빨강, 6일 이하는 주황입니다. 권장 입고 = 목표 일수 × 일평균(올림) − 판매 가능 − 입고 예정이고, 보낼 수 있음은 셀메이트 SJ_기본창고 재고에서 미발송 주문을 뺀 수량입니다. 14·30일 평균은 '+esc(D.doc.histSince||'-')+' 부터 쌓은 판매 이력으로 계산하므로 이력이 짧으면 실제보다 낮게 나옵니다. NEW 는 최근 7일 안에 도착보장 재고 목록에 처음 잡힌 옵션이고 기본 정렬에서 맨 위에 둡니다. 추가일은 자동 갱신이 그 옵션을 처음 본 시각이라 실제로 켠 시각보다 최대 한 시간 늦을 수 있고, 기록 시작('+esc(D.doc.seenSince||'-')+') 전부터 있던 옵션은 이전으로 표시합니다.';
   qtyNote();
 }
 // 재고 탭 입고 수량 칸 = 입고신청 목록에서 이 옵션 줄의 수량. 적으면 목록 줄을 고치거나 끝에 더함
@@ -632,17 +639,17 @@ async function dlSm(){
   toast('셀메이트 주문등록 '+R.length+'옵션 내려받음'+(miss?' · 바코드 없는 행 '+miss+'개 확인 필요':''),miss?5000:3000);
 }
 async function dlView(){const V=view();if(!V.length)return toast('필터에 맞는 옵션이 없습니다');await loadXLSX();
-  const H=['품번','상품명','옵션','계절','연도','바코드','재고 상태','판매 가능','입고 예정','셀메 가용재고','최근 7일','기간 판매','일평균','남은 일수','권장 입고','보낼 수 있음','입고 수량','최종 판매가','상품 번호','옵션 번호','SKU 번호','세팅 점검'];
+  const H=['품번','상품명','옵션','계절','연도','바코드','재고 상태','판매 가능','입고 예정','셀메 가용재고','최근 7일','기간 판매','일평균','남은 일수','권장 입고','보낼 수 있음','입고 수량','최종 판매가','상품 번호','옵션 번호','SKU 번호','세팅 점검','추가일'];
   const n=v=>v==null||v===''||isNaN(v)?'':+v;
-  const R=V.map(({x,c})=>[x.code||'',x.name||'',x.opt||'',x.sea||'',x.yr||'',inBc(x)||'',x.st||'',n(x.avail),n(x.inc),n(x.smAvail),n(x.s7),n(c.s),c.avg==null?'':Math.round(c.avg*100)/100,c.left==null?'':Math.round(c.left*10)/10,n(c.rec),n(c.can),+D.qty[x.oNo]||'',n(x.fin),x.gNo||'',x.oNo||'',x.sku||'',x.issue&&ISSUE[x.issue]?ISSUE[x.issue][0]:'']);
-  const ws=XLSX.utils.aoa_to_sheet([H].concat(R));ws['!cols']=[14,40,22,6,7,16,10,8,8,9,8,8,7,8,8,9,8,10,12,12,14,14].map(w=>({wch:w}));ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R.length,c:H.length-1}})};
+  const R=V.map(({x,c})=>[x.code||'',x.name||'',x.opt||'',x.sea||'',x.yr||'',inBc(x)||'',x.st||'',n(x.avail),n(x.inc),n(x.smAvail),n(x.s7),n(c.s),c.avg==null?'':Math.round(c.avg*100)/100,c.left==null?'':Math.round(c.left*10)/10,n(c.rec),n(c.can),+D.qty[x.oNo]||'',n(x.fin),x.gNo||'',x.oNo||'',x.sku||'',x.issue&&ISSUE[x.issue]?ISSUE[x.issue][0]:'',x.added||'']);
+  const ws=XLSX.utils.aoa_to_sheet([H].concat(R));ws['!cols']=[14,40,22,6,7,16,10,8,8,9,8,8,7,8,8,9,8,10,12,12,14,14,16].map(w=>({wch:w}));ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R.length,c:H.length-1}})};
   const lbl=id=>{const el=$('#'+id);return el&&!el.hidden?el.querySelector('.msb').textContent.replace(/^[^:]*:\s*/,''):'전체';},sel=id=>{const x=$(id);return x&&x.selectedIndex>=0?x.options[x.selectedIndex].text:'';};
   const cond=[['브랜드',CFG.label],['내려받은 시각',new Date().toLocaleString('ko-KR')],['검색어',D.q.trim()||'(없음)'],['조건',lbl('msFilter')],['계절',lbl('msSeason')],['연도',lbl('msYear')],['정렬',sel('#fSort')||'열 제목 정렬'],['판매 기준',sel('#fBase')],['목표',sel('#fDays')],['열 필터',ACF.labels().join(', ')||'(없음)'],['옵션 수',V.length+' / '+D.items.length]];
   const wc=XLSX.utils.aoa_to_sheet([['항목','값']].concat(cond));wc['!cols']=[{wch:22},{wch:50}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'도착보장 재고');XLSX.utils.book_append_sheet(wb,wc,'필터 조건');
   const t=new Date(),hm=String(t.getHours()).padStart(2,'0')+String(t.getMinutes()).padStart(2,'0');XLSX.writeFile(wb,todayKst().replace(/-/g,'')+'_'+CFG.label+'_도착보장_필터_'+V.length+'옵션_'+hm+'.xlsx');toast('필터 결과 '+fmt(V.length)+'옵션을 엑셀로 내려받았습니다');}
 function dlCsv(){
-  const V=view();const H=['품번','상품명','옵션','바코드','재고 상태','판매 가능','입고 예정','셀메 가용재고','최근 7일','기간 판매','일평균','남은 일수','권장 입고','보낼 수 있음','입고 수량','최종 판매가','상품 번호','옵션 번호','SKU 번호','세팅 점검'];
-  const T=[H,...V.map(({x,c})=>[x.code,x.name,x.opt,inBc(x),x.st,x.avail,x.inc,x.smAvail==null?'':x.smAvail,x.s7,c.s,Math.round(c.avg*100)/100,c.left==null?'':Math.round(c.left*10)/10,c.rec,c.can==null?'':c.can,D.qty[x.oNo]||'',x.fin,x.gNo,x.oNo,x.sku,x.issue?ISSUE[x.issue][0]:''])];
+  const V=view();const H=['품번','상품명','옵션','바코드','재고 상태','판매 가능','입고 예정','셀메 가용재고','최근 7일','기간 판매','일평균','남은 일수','권장 입고','보낼 수 있음','입고 수량','최종 판매가','상품 번호','옵션 번호','SKU 번호','세팅 점검','추가일'];
+  const T=[H,...V.map(({x,c})=>[x.code,x.name,x.opt,inBc(x),x.st,x.avail,x.inc,x.smAvail==null?'':x.smAvail,x.s7,c.s,Math.round(c.avg*100)/100,c.left==null?'':Math.round(c.left*10)/10,c.rec,c.can==null?'':c.can,D.qty[x.oNo]||'',x.fin,x.gNo,x.oNo,x.sku,x.issue?ISSUE[x.issue][0]:'',x.added||''])];
   const csv='﻿'+T.map(r=>r.map(v=>{const s=String(v==null?'':v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=CFG.label+'_도착보장_'+todayKst().replace(/-/g,'')+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
 }
